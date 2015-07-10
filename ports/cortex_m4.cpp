@@ -129,7 +129,6 @@ namespace uptp {
 		if(msg) {
 			auto& ref = msg->payload.to_type<recv_data_struct>();
 			ref.addr = *addr;
-			handle.time_to_logical();
 			ref.packet = std::move(handle);
 			ref.udp_struct = &udp_struct;
 			auto* bare_ptr = msg.get_payload();

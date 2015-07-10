@@ -6,19 +6,138 @@ namespace uptp {
 
 	namespace states {
 
+		namespace slave_detail {
+
+			//
+			//	estimating drift
+			//
+
+			estimating_drift::estimating_drift()
+				: num_syncs_received_(0)
+			{
+				uncorrected_offset_buffer_.set(0);
+				one_way_delay_buffer_.set(0);
+			}
+
+			void estimating_drift::on_sync(Slave& state, Time master_time, Time slave_time)
+			{
+				if(num_syncs_received_ == 0) {
+					first_sync_master_  = master_time;
+					first_sync_slave_ = slave_time;
+				}
+
+				uncorrected_offset_buffer_.add(((slave_time-first_sync_slave_)-(master_time-first_sync_master_)).to_nanos());
+
+				sync_master_ = master_time;
+				sync_slave_ = slave_time;
+
+				++num_syncs_received_;
+			}
+
+			void estimating_drift::on_delay(Slave& slave, Time master_time, Time slave_time)
+			{
+				// We're assuming that 8*one_way_delay doesn't reach a second!
+				if(num_syncs_received_ > 1 ) {
+					const auto nom    = (sync_master_ - first_sync_master_);
+					const auto den    = (sync_slave_ - first_sync_slave_);
+					const int32 drift = ((nom.to_nanos() << 28) / (den.to_nanos() >> 4))>>2;	// 2.30 fixed
+
+					const auto& t0 = sync_master_;
+					const auto& t1 = sync_slave_;
+
+					const auto& t2 = slave_time;
+					const auto& t3 = master_time;
+
+					int32 delay_nanos = static_cast<int32>(((t3-t0+t2-t1).to_nanos() >> 1) - ((t2-t1).to_nanos() << 30) / drift);
+					one_way_delay_buffer_.add(delay_nanos);
+
+					if(num_syncs_received_ >= 8) {
+						// We're really assuming that getting the first 8 syncs took less than 16 seconds here!
+						int32 ppb         = static_cast<int32>(((static_cast<int64>(drift) * 1000000000) >> 30) - 1000000000);
+
+						one_way_delay_buffer_.add(delay_nanos);
+						// Fixme: use the mean offset + 1/2 * t * drift for a better estimate!
+						//Time difftime = slave.uncorrected_offset_buffer_.average() + (sync_master_ - first_sync_master_).to_nanos()/2;
+						int64 offset_nanos = uncorrected_offset_buffer_.average();
+						Time mean_uncorrected_offset = Time(offset_nanos/1000000000, offset_nanos%1000000000) - first_sync_master_ + first_sync_slave_;
+						int32 mean_one_way_delay = one_way_delay_buffer_.average();
+
+						//Time offset = mean_uncorrected_offset - Time(0, mean_one_way_delay);
+						//auto test = master_time - ( slave_time + offset );
+
+						Time offset = t1 - t0 - Time(0, delay_nanos);
+
+						auto& port = slave.clock_.get_system_port();
+						port.adjust_time(-offset);
+						port.discipline(ppb);
+						slave.servo_.reset(ppb);		// initialize the servo integrator!
+						slave.states_.to_state<pi_operational>(/*delay_nanos*/0);
+					}
+				}
+			}
+
+			//
+			// pi_operational
+			//
+
+			pi_operational::pi_operational(int32 delay_nanos)
+				: last_time_(0,0)
+			{
+				one_way_delay_buffer_.set(delay_nanos);
+				uncorrected_offset_buffer_.set(0);
+			}
+
+			void pi_operational::on_sync(Slave& slave, Time master_time, Time slave_time)
+			{
+				sync_master_ = master_time;
+				sync_slave_  = slave_time;
+				Time offset = slave_time - master_time;
+				if(offset.secs_ == 0) {
+					uncorrected_offset_buffer_.add(offset.nanos_);
+				}
+			}
+
+			void pi_operational::on_delay(Slave& slave, Time master_time, Time slave_time)
+			{
+				const auto& t0 = sync_master_;
+				const auto& t1 = sync_slave_;
+				const auto& t2 = slave_time;
+				const auto& t3 = master_time;
+
+				const Time one_way_delay = ((t3-t0)-(t2-t1))/2;
+				if(one_way_delay.secs_ == 0) {
+					one_way_delay_buffer_.add(one_way_delay.nanos_);
+				}
+
+				if(last_time_.secs_ != 0) {
+					int32 offset = uncorrected_offset_buffer_.average() - one_way_delay_buffer_.average();
+					uint32 dt    = static_cast<uint32>((slave_time - last_time_).to_nanos());
+					slave.servo_.feed( dt, -offset );
+				}
+
+				last_time_ = slave_time;
+			}
+
+		}
+
 		Slave::Slave(PtpClock& clock)
-			: clock_(clock), servo_(clock.get_system_port()), delay_req_id_(4434), delay_state_(clock.get_system_port())
+			: clock_(clock),
+			  servo_(clock.get_system_port()),
+			  delay_req_id_(4434),
+			  sync_serial_(0),
+			  sync_state_(slave_detail::SyncState::Initial),
+			  dreq_state_(slave_detail::DreqState::Initial)
 		{
 			clock_.master_tracker().best_master_changed = util::function<void()>(this, &Slave::on_best_master_changed);
-			delay_state_.on_offset_update = util::function<void(uint32, int32)>(&servo_, &ClockServo::feed);
 			servo_.output = util::function<void(int32)>(&clock.get_system_port(), &SystemPort::discipline);
 			clock_.event_port()->on_transmit_completed = util::function<void(uint32, Time)>(this, &Slave::on_delay_request_transmitted);
+
+			states_.to_state<slave_detail::estimating_drift>();
 		}
 
 		Slave::~Slave()
 		{
 			clock_.master_tracker().best_master_changed.reset();
-			delay_state_.on_offset_update.reset();
 			clock_.event_port()->on_transmit_completed.reset();
 		}
 
@@ -27,21 +146,22 @@ namespace uptp {
 			if (header.is(MessageTypes::Synch)) {
 				msg::Sync sync;
 				msg::deserialize(packet_handle.get_data(), sync);
+
 				if(header.flag_field0 & uint8(msg::Header::Field0Flags::TwoStep)) {
-					delay_state_.on_sync(header.sequence_id, packet_handle.time());
+					on_sync(header.sequence_id, packet_handle.time());
 				} else {
-					delay_state_.on_sync(header.sequence_id, packet_handle.time(), sync.origin_timestamp);
+					on_sync(header.sequence_id, packet_handle.time(), sync.origin_timestamp);
 				}
 				send_delay_request();	// no timers yet :(
 			} else if( header.is(MessageTypes::FollowUp)) {
 				msg::FollowUp follow_up;
 				msg::deserialize(packet_handle.get_data(), follow_up);
-				delay_state_.on_sync_followup(header.sequence_id, follow_up.precise_origin_timestamp);
+				on_sync_followup(header.sequence_id, follow_up.precise_origin_timestamp);
 			} else if (header.is(MessageTypes::DelayResp)) {
 				msg::DelayResp delayresp;
 				msg::deserialize(packet_handle.get_data(), delayresp);
 //				if (delayresp.port_identity == clock_.master_tracker().best_foreign()->port_identity) {
-					delay_state_.on_request_answered(delayresp.timestamp);
+					on_request_answered(delayresp.timestamp);
 //				}
 			}
 		}
@@ -85,8 +205,53 @@ namespace uptp {
 
 		void Slave::on_delay_request_transmitted(uint32 id, Time when)
 		{
-			delay_state_.on_request_sent(when);
+			dreq_send_ = when;
+			dreq_state_ = slave_detail::DreqState::DreqSent;
 			++delay_req_id_;
+		}
+
+		void Slave::on_request_answered(const Time& dreq_receive)
+		{
+			if(dreq_state_ == slave_detail::DreqState::DreqSent) {
+				if(states_.is_state<slave_detail::pi_operational>()) {
+					states_.as_state<slave_detail::pi_operational>().on_delay(*this, dreq_receive, dreq_send_);
+				} else if(states_.is_state<slave_detail::estimating_drift>()) {
+					states_.as_state<slave_detail::estimating_drift>().on_delay(*this, dreq_receive, dreq_send_);
+				}
+				dreq_state_ = slave_detail::DreqState::Initial;
+			}
+		}
+
+		void Slave::on_sync(uint16 serial, const Time& receive_time, const Time& send_time)
+		{
+			if(states_.is_state<slave_detail::pi_operational>()) {
+				states_.as_state<slave_detail::pi_operational>().on_sync(*this, send_time, receive_time);
+			} else if(states_.is_state<slave_detail::estimating_drift>()) {
+				states_.as_state<slave_detail::estimating_drift>().on_sync(*this, send_time, receive_time);
+			}
+			sync_state_ = slave_detail::SyncState::Initial;
+		}
+
+		// Two-Step
+		void Slave::on_sync(uint16 serial, const Time& receive_time)
+		{
+			sync_receive_ = receive_time;
+			sync_serial_ = serial;
+			sync_state_ = slave_detail::SyncState::SyncTwoStepReceived;
+		}
+
+		void Slave::on_sync_followup(uint16 serial, const Time& send_time)
+		{
+			if(sync_state_ == slave_detail::SyncState::SyncTwoStepReceived && serial == sync_serial_) {
+				if(states_.is_state<slave_detail::pi_operational>()) {
+					states_.as_state<slave_detail::pi_operational>().on_sync(*this, send_time, sync_receive_);
+				} else if(states_.is_state<slave_detail::estimating_drift>()) {
+					states_.as_state<slave_detail::estimating_drift>().on_sync(*this, send_time, sync_receive_);
+				}
+				sync_state_ = slave_detail::SyncState::Initial;
+			} else {
+				sync_state_ = slave_detail::SyncState::Initial;
+			}
 		}
 	
 	}

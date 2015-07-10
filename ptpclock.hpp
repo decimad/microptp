@@ -9,6 +9,7 @@
 #include <microptp/ptpdatatypes.hpp>
 #include <microptp/mastertracker.hpp>
 #include <microptp/uptp.hpp>
+#include <microptp/state_slave.hpp>
 
 namespace uptp {
 
@@ -16,13 +17,6 @@ namespace uptp {
 	class SystemPort;
 
 	namespace states {
-
-		class PtpStateBase
-		{
-		public:
-			virtual void on_message(const msg::Header& header, PacketHandle) = 0;
-			virtual ~PtpStateBase() {}
-		};
 
 		class Initializing : public PtpStateBase
 		{
@@ -63,27 +57,7 @@ namespace uptp {
 			PtpClock& clock_;
 		};
 
-		class Slave : public PtpStateBase
-		{
-		public:
-			Slave(PtpClock& clock);
-			~Slave();
-
-			void on_delay_req_timer();
-			void on_message(const msg::Header&, PacketHandle) override;
-			void on_best_master_changed();
-
-		private:
-			void send_delay_request();
-			void on_delay_request_transmitted(uint32 id, Time time);
-
-			PtpDelayState delay_state_;
-			uint16 delay_req_id_;
-			//TimerHandleType delay_req_timer_;
-			ClockServo servo_;
-			PtpClock& clock_;
-		};
-
+		/*
 		class PeerSlave : public PtpStateBase
 		{
 		public:
@@ -95,6 +69,7 @@ namespace uptp {
 			ClockServo servo_;
 
 		};
+*/
 
 		class Master : public PtpStateBase
 		{

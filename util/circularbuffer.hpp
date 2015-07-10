@@ -72,18 +72,18 @@ namespace util {
 				elem = value;
 			}
 			front_ = Size;
-			sum_ = Size * value;
+			sum_ = value * T(Size);
 		}
 
 		void add(T value) {
-			sum_ -= arr_[(front_-Size-1)%Size];
+			sum_ -= arr_[front_%Size];
 			arr_[front_%Size] = value;
 			sum_ += value;
 			++front_;
 		}
 
 		T average() const {
-			return sum_ / Size;
+			return sum_ / T(Size);
 		}
 
 		T& operator[](size_t index) {
