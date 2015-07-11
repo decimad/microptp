@@ -126,7 +126,7 @@ namespace util {
 	}
 
 	template< typename DestType, int Z, typename lhs_T, typename rhs_T, int X, int Y, unsigned int B>
-	constexpr fixed_point<DestType, Y>
+	constexpr fixed_point<DestType, Z>
 	sub(fixed_point<lhs_T, X, B> lhs, fixed_point<rhs_T, Y, B> rhs) {
 		return fixed_point<DestType, Z>( scale<DestType>(lhs.value, B, X - Z) - scale<DestType>(rhs.value, B, Y - Z));
 	}

@@ -50,7 +50,7 @@ namespace uptp {
 				Time last_time_;
 
 				util::circular_averaging_buffer<int32, 2> one_way_delay_buffer_;		// if the drift is bad, delay can actually be negative!
-				util::circular_averaging_buffer<int32, 8> uncorrected_offset_buffer_;
+				util::circular_averaging_buffer<int32, 2> uncorrected_offset_buffer_;
 			};
 
 

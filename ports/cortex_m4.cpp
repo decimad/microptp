@@ -8,6 +8,7 @@
 #include <microptp/ports/cortex_m4.hpp>
 #include <chmboxes.h>	// Mailbox for UPTP thread
 #include <chbsem.h>
+#include <stm/trace.h>
 
 
 namespace uptp {
@@ -350,7 +351,15 @@ namespace uptp {
 
 	void SystemPort::adjust_time(Time delta)
 	{
-		eth::ptp_update_time(delta.secs_, eth::ptp_nanos_to_subseconds(delta.nanos_));
+		uint32 subs = eth::ptp_nanos_to_subseconds(util::abs(delta.nanos_));
+		uint32 secs = static_cast<uint32>(util::abs(delta.secs_));
+		if(delta.secs_ < 0 || delta.nanos_ < 0) {
+			subs |= 1<<31;
+		} else {
+			trace_printf(0, "System Port: adding %d secs %d subs.\n", secs, subs);
+		}
+
+		eth::ptp_update_time(secs, subs);
 	}
 
 	void SystemPort::discipline(int32 ppb)

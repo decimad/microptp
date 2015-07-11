@@ -26,8 +26,8 @@ namespace uptp {
 	private:
 		fixed_type integrator_state_;
 
-		util::fixed_point<int32,-8> kn_;
-		util::fixed_point<int32,-8> kp_;
+		util::fixed_point<int32,-22> kn_;
+		util::fixed_point<int32,-22> kp_;
 
 		SystemPort& system_port_;
 		uint8 offset_count_;

@@ -12,8 +12,8 @@ namespace uptp {
 	ClockServo::ClockServo(SystemPort& system_port)
 		: system_port_(system_port), offset_count_(0), delay_count_(0)
 	{
-		kp_ = util::to_fixed<int32, -8>(0.5);
-		kn_ = util::to_fixed<int32, -8>(0.01);
+		kp_ = util::to_fixed<int32, -22>(0.1);
+		kn_ = util::to_fixed<int32, -22>(0.005);
 		integrator_state_ = 0;
 	}
 	
@@ -28,16 +28,21 @@ namespace uptp {
 
 	void ClockServo::feed(uint32 dt_nanos, int32 offset_nanos)
 	{
-		util::fixed_point<int32,-30> dt_fixed = ((static_cast<uint64>(dt_nanos) << 32) / 1000000000ul)>>2;	// 2.30
-		auto scaled_off = util::mul_precise<int32, -8, int64>(dt_fixed, offset_nanos);
-		auto atten_off  = util::mul_precise<int32, -8, int64>(scaled_off, kn_);
-		integrator_state_ = util::add<int32, -8>(integrator_state_, atten_off);
-		auto output_val = util::add<int32, -8>(util::mul_precise<int32, -8, int64>(kp_, offset_nanos), integrator_state_);
+		// integrator_state_' = integrator_state_ + dt * kn_ * offset_nanos
+		// [output] = [ppb].
+		// => [kn_] = [ppb / offset_nanos]
+		// => [kp_] = [ppb / offset_nanos / s]
+
+		util::fixed_point<int32, -30> dt_fixed = ((static_cast<uint64>(dt_nanos) << 30) / 1000000000ul);
+		auto scaled_off                        = util::mul_precise<int32, -22, int64>(dt_fixed, offset_nanos);
+		auto atten_off                         = util::mul_precise<int32,  -8, int64>(scaled_off, kn_);
+		integrator_state_                      = util::add        <int32,  -8>       (integrator_state_, atten_off);
+		auto proportional                      = util::mul_precise<int32,  -8, int64>(kp_, offset_nanos);
+		auto value                             = util::to<int32>(util::add<int32, -8>(proportional, integrator_state_));
 
 		if(output) {
-			auto val = output_val.value >> 8;
-			trace_printf(0, "Offset: %10d PI output: %10d ppb (integrator: %10d)\n", offset_nanos, val, (integrator_state_.value>>8));
-			output( val );
+			trace_printf(0, "Offset: %10d PI output: %10d ppb (integrator: %10d)\n", offset_nanos, value, util::to<int32>(integrator_state_));
+			output( value );
 		}
 	}
 

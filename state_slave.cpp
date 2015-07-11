@@ -1,6 +1,7 @@
 #include <microptp/ptpclock.hpp>
 #include <microptp/messages.hpp>
 #include <microptp/ports/systemport.hpp>
+#include <stm/trace.h>
 
 namespace uptp {
 
@@ -26,7 +27,9 @@ namespace uptp {
 					first_sync_slave_ = slave_time;
 				}
 
-				uncorrected_offset_buffer_.add(((slave_time-first_sync_slave_)-(master_time-first_sync_master_)).to_nanos());
+				uncorrected_offset_buffer_.add((
+							(master_time-first_sync_master_) - (slave_time-first_sync_slave_)
+						).to_nanos());
 
 				sync_master_ = master_time;
 				sync_slave_ = slave_time;
@@ -39,8 +42,8 @@ namespace uptp {
 				// We're assuming that 8*one_way_delay doesn't reach a second!
 				if(num_syncs_received_ > 1 ) {
 					const auto nom    = (sync_master_ - first_sync_master_);
-					const auto den    = (sync_slave_ - first_sync_slave_);
-					const int32 drift = ((nom.to_nanos() << 28) / (den.to_nanos() >> 4))>>2;	// 2.30 fixed
+					const auto den    = (sync_slave_  - first_sync_slave_);
+					auto drift =  util::fixed_point<int32, -30>((nom.to_nanos() << 28) / (den.to_nanos() >> 2));
 
 					const auto& t0 = sync_master_;
 					const auto& t1 = sync_slave_;
@@ -48,30 +51,50 @@ namespace uptp {
 					const auto& t2 = slave_time;
 					const auto& t3 = master_time;
 
-					int32 delay_nanos = static_cast<int32>(((t3-t0+t2-t1).to_nanos() >> 1) - ((t2-t1).to_nanos() << 30) / drift);
+					const int64 lhs = ((t3-t0 + t2-t1).to_nanos() / 2);
+					const int64 rhs = (((t2-t1).to_nanos()>>2)*drift.value)>>30;
+
+					int32 delay_nanos = static_cast<int32>(lhs + rhs);
+
+					if(util::abs(delay_nanos) > 50000000) {
+						trace_printf(0, "Bad delay on estimating one way delay (>50ms)\n");
+					}
+
 					one_way_delay_buffer_.add(delay_nanos);
 
 					if(num_syncs_received_ >= 8) {
 						// We're really assuming that getting the first 8 syncs took less than 16 seconds here!
-						int32 ppb         = static_cast<int32>(((static_cast<int64>(drift) * 1000000000) >> 30) - 1000000000);
+						auto drift_minus_one = util::sub<int32, -30>(drift, util::fixed_point<int32, 0>(1));
+						auto ppb = util::mul_precise<int32, 0, int64>(drift_minus_one, 1000000000);
+
+						//int32 ppb         = static_cast<int32>(((static_cast<int64>(drift) * 1000000000) >> 30) - 1000000000);
+						trace_printf(0, "Estimated ppb: %d\n", ppb.value);
+
 
 						one_way_delay_buffer_.add(delay_nanos);
+						int32 mean_one_way_delay = one_way_delay_buffer_.average();
+
+						if(util::abs(mean_one_way_delay) > 50000000) {
+							trace_printf(0, "Bad mean delay on estimating one way delay (>50ms)\n");
+						} else {
+							trace_printf(0, "Mean one way delay: %d nanos\n", mean_one_way_delay);
+						}
+
 						// Fixme: use the mean offset + 1/2 * t * drift for a better estimate!
 						//Time difftime = slave.uncorrected_offset_buffer_.average() + (sync_master_ - first_sync_master_).to_nanos()/2;
 						int64 offset_nanos = uncorrected_offset_buffer_.average();
-						Time mean_uncorrected_offset = Time(offset_nanos/1000000000, offset_nanos%1000000000) - first_sync_master_ + first_sync_slave_;
-						int32 mean_one_way_delay = one_way_delay_buffer_.average();
+						Time mean_uncorrected_offset = Time(offset_nanos/1000000000, offset_nanos%1000000000) + first_sync_master_ - first_sync_slave_;
 
-						//Time offset = mean_uncorrected_offset - Time(0, mean_one_way_delay);
-						//auto test = master_time - ( slave_time + offset );
+						auto test_time = util::mul_precise<int32, 0, int64>(drift_minus_one, (nom/2).to_nanos()).value;
 
-						Time offset = t1 - t0 - Time(0, delay_nanos);
+						Time offset = mean_uncorrected_offset - Time(0, mean_one_way_delay) + Time(0, test_time);
+						trace_printf(0, "Offsetting clock by %d secs %d nanos.\n", static_cast<int32>(offset.secs_), offset.nanos_);
 
 						auto& port = slave.clock_.get_system_port();
-						port.adjust_time(-offset);
-						port.discipline(ppb);
-						slave.servo_.reset(ppb);		// initialize the servo integrator!
-						slave.states_.to_state<pi_operational>(/*delay_nanos*/0);
+						port.adjust_time(offset);
+						port.discipline(ppb.value);
+						slave.servo_.reset(ppb.value);		// initialize the servo integrator!
+						slave.states_.to_state<pi_operational>(mean_one_way_delay);
 					}
 				}
 			}
@@ -91,7 +114,12 @@ namespace uptp {
 			{
 				sync_master_ = master_time;
 				sync_slave_  = slave_time;
-				Time offset = slave_time - master_time;
+				Time offset  = master_time - slave_time;
+
+				if(offset.secs_ != 0 || util::abs(offset.nanos_) > 50000000) {
+					trace_printf(0, "Bad estimatation preset! (secs: %d nanos: %d)\n", static_cast<int32>(offset.secs_), offset.nanos_);
+				}
+
 				if(offset.secs_ == 0) {
 					uncorrected_offset_buffer_.add(offset.nanos_);
 				}
@@ -105,6 +133,12 @@ namespace uptp {
 				const auto& t3 = master_time;
 
 				const Time one_way_delay = ((t3-t0)-(t2-t1))/2;
+
+				if((one_way_delay.secs_ != 0) || (util::abs(one_way_delay.nanos_) > 50000000)) {
+					trace_printf(0, "PI Operational: Bad One-Way Delay: %d\n", one_way_delay.nanos_);
+				}
+
+
 				if(one_way_delay.secs_ == 0) {
 					one_way_delay_buffer_.add(one_way_delay.nanos_);
 				}
@@ -112,7 +146,7 @@ namespace uptp {
 				if(last_time_.secs_ != 0) {
 					int32 offset = uncorrected_offset_buffer_.average() - one_way_delay_buffer_.average();
 					uint32 dt    = static_cast<uint32>((slave_time - last_time_).to_nanos());
-					slave.servo_.feed( dt, -offset );
+					slave.servo_.feed(dt, offset);
 				}
 
 				last_time_ = slave_time;
