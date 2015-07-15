@@ -153,7 +153,7 @@ namespace util {
 	mul_precise(fixed_point<LT, X, B> lhs, RT&& rhs)
 	{
 		return fixed_point<ZT, Z>(
-			scale<ZT>(static_cast<IT>(lhs.value) * static_cast<IT>(rhs), B, X - Z)
+			scale<ZT>(static_cast<IT>(lhs.value) * static_cast<IT>(rhs), B, X - Z /*- 8*(sizeof(IT)-sizeof(ZT))*/)
 			);
 	}
 

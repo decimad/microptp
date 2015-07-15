@@ -132,9 +132,7 @@ namespace uptp {
 			ref.addr = *addr;
 			ref.packet = std::move(handle);
 			ref.udp_struct = &udp_struct;
-			auto* bare_ptr = msg.get_payload();
-			msg->lifetime_ = std::move(msg);
-			udp_struct.sysport_->post_message(bare_ptr);
+			udp_struct.sysport_->post_message(std::move(msg));
 		}
 	}
 
@@ -267,7 +265,11 @@ namespace uptp {
 
 	void SystemPort::on_command(ThreadCommands cmds)
 	{
-
+		if(cmds == ThreadCommands::EnableClock) {
+			clock_.enable();
+		} else if(cmds == ThreadCommands::DisableClock) {
+			clock_.disable();
+		}
 	}
 
 	void SystemPort::on_ip_addr_changed( ip_addr_t addr )
@@ -281,16 +283,13 @@ namespace uptp {
 		chMBPost(&mailbox_, reinterpret_cast<msg_t>(msg), TIME_INFINITE);
 	}
 
-
 	void SystemPort::ip_addr_changed( ip_addr_t addr )
 	{
 		auto msg = default_message_pool.make();
 		if(msg) {
-			auto ref = msg->payload.to_type<ip_addr_t>();
+			auto& ref = msg->payload.to_type<ip_addr_t>();
 			ref = addr;
-			auto* bare_ptr = msg.get_payload();
-			msg->lifetime_ = std::move(msg);
-			post_message(bare_ptr);
+			post_message(std::move(msg));
 		}
 	}
 
@@ -299,13 +298,21 @@ namespace uptp {
 	{
 		auto msg = default_message_pool.make();
 		if(msg) {
-			auto ref = msg->payload.to_type<func_struct>();
+			auto& ref = msg->payload.to_type<func_struct>();
 			ref.func = func;
 			ref.arg1 = arg1;
 			ref.arg2 = arg2;
-			auto* bare_ptr = msg.get_payload();
-			msg->lifetime_ = std::move(msg);
-			post_message(bare_ptr);
+			post_message(std::move(msg));
+		}
+	}
+
+	void SystemPort::post_thread_command(ThreadCommands cmd)
+	{
+		auto msg = default_message_pool.make();
+		if(msg) {
+			auto& ref = msg->payload.to_type<ThreadCommands>();
+			ref = cmd;
+			post_message(std::move(msg));
 		}
 	}
 

@@ -18,7 +18,9 @@ namespace uptp {
 		~SystemPort();
 
 		enum class ThreadCommands {
-			Finish
+			EnableClock = 0,
+			DisableClock = 1,
+			Finish = 2
 		};
 
 	public:
@@ -48,6 +50,14 @@ namespace uptp {
 		void close();
 
 	public:
+
+		template<typename T>
+		void post_message(util::pool_ptr<T> msg) {
+			auto* bare_ptr = msg.get_payload();
+			msg->lifetime_ = std::move(msg);
+			post_message(bare_ptr);
+		}
+
 		void post_message(sysport_message* msg);
 
 		void post_ip_addr_changed( ip_addr_t );

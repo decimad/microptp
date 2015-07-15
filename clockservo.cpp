@@ -13,7 +13,7 @@ namespace uptp {
 		: system_port_(system_port), offset_count_(0), delay_count_(0)
 	{
 		kp_ = util::to_fixed<int32, -22>(0.1);
-		kn_ = util::to_fixed<int32, -22>(0.005);
+		kn_ = util::to_fixed<int32, -22>(0.001);
 		integrator_state_ = 0;
 	}
 	
@@ -33,15 +33,18 @@ namespace uptp {
 		// => [kn_] = [ppb / offset_nanos]
 		// => [kp_] = [ppb / offset_nanos / s]
 
-		util::fixed_point<int32, -30> dt_fixed = ((static_cast<uint64>(dt_nanos) << 30) / 1000000000ul);
-		auto scaled_off                        = util::mul_precise<int32, -22, int64>(dt_fixed, offset_nanos);
+		util::fixed_point<int32, -30> dt_fixed = ((static_cast<int64>(dt_nanos) << 30) / 1000000000ul);
+		auto scaled_off = util::fixed_point<int32, -10>((static_cast<int64>(dt_fixed.value)*static_cast<int64>(offset_nanos))>>20);
+//		auto scaled_off                        = util::mul_precise<int32, -16, int64>(dt_fixed, offset_nanos);
+		int scaled_off_value = util::to<int32>(scaled_off);
 		auto atten_off                         = util::mul_precise<int32,  -8, int64>(scaled_off, kn_);
+		int delta_integrator = util::to<int32>(atten_off);
 		integrator_state_                      = util::add        <int32,  -8>       (integrator_state_, atten_off);
 		auto proportional                      = util::mul_precise<int32,  -8, int64>(kp_, offset_nanos);
 		auto value                             = util::to<int32>(util::add<int32, -8>(proportional, integrator_state_));
 
 		if(output) {
-			trace_printf(0, "Offset: %10d PI output: %10d ppb (integrator: %10d)\n", offset_nanos, value, util::to<int32>(integrator_state_));
+			trace_printf(0, "Offset: %10d ns ahead. PI output (speeding up by): %10d ppb + (integrator: %10d) (scaled_off: %10d, delta_int: %10d)\n", offset_nanos, value-util::to<int32>(integrator_state_), util::to<int32>(integrator_state_), scaled_off_value, delta_integrator );
 			output( value );
 		}
 	}

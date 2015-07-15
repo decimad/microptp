@@ -79,8 +79,10 @@ namespace util {
 				destruct(current_type);
 			}
 
-			new (&storage_) ToType(std::forward<Args>(args)...);
+			// Need to set before, because the created type might instantly switch
 			current_type = type_to_index<ToType, 0, Types...>::value;
+			new (&storage_) ToType(std::forward<Args>(args)...);
+
 
 			return *reinterpret_cast<ToType*>(&storage_);
 		}

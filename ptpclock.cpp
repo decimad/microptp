@@ -20,10 +20,20 @@ namespace uptp {
 		return master_tracker_;
 	}
 
-	void PtpClock::init_net()
+	void PtpClock::enable()
 	{
+		if(is<states::Disabled>()) {
+			to_state<states::Listening>();
+		}
 	}
-	
+
+	void PtpClock::disable()
+	{
+		if(!is<states::Disabled>()) {
+			to_state<states::Disabled>();
+		}
+	}
+
 	void PtpClock::on_general_message(PacketHandle packet)
 	{
 		msg::Header header;
@@ -65,7 +75,7 @@ namespace uptp {
 			event_port_->on_received   = util::function<void(PacketHandle)>(this, &PtpClock::on_event_message);
 			general_port_->on_received = util::function<void(PacketHandle)>(this, &PtpClock::on_general_message);
 
-			statemachine_.to_state<states::Listening>(*this);
+			//statemachine_.to_state<states::Listening>(*this);
 		}
 
 	}

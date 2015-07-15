@@ -10,6 +10,7 @@
 #include <microptp/mastertracker.hpp>
 #include <microptp/uptp.hpp>
 #include <microptp/state_slave.hpp>
+#include <microptp/state_disabled.hpp>
 
 namespace uptp {
 
@@ -37,12 +38,13 @@ namespace uptp {
 		public:
 			Faulty(PtpClock& clock);
 		};
-
+		/*
 		class Disabled : public PtpStateBase
 		{
 		public:
 			Disabled(PtpClock& clock);
 		};
+*/
 
 		class Listening : public PtpStateBase
 		{
@@ -108,6 +110,14 @@ namespace uptp {
 
 		MasterTracker& master_tracker();
 
+		template< typename T >
+		bool is() const {
+			return statemachine_.template is_state<T>();
+		}
+
+		void enable();
+		void disable();
+
 		void send_delay_req(util::function<void(const Time&)> completion_func);
 
 		void on_network_changed();
@@ -142,12 +152,12 @@ namespace uptp {
 		util::state_machine<
 			states::Initializing,
 			//states::Faulty,
-			//states::Disabled,
+			states::Disabled,
 			states::Listening,
-			states::Slave,
+			states::Slave
 			//states::Master,
 			//states::Passive,
-			states::Uncalibrated
+			//states::Uncalibrated
 		> statemachine_;
 
 	};
