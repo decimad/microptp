@@ -3,6 +3,8 @@
 
 #include <microptp/ptpdatatypes.hpp>
 
+//#define MICROPTP_DIAGNOSTICS
+
 namespace uptp {
 
 	class SystemPort;
@@ -18,8 +20,6 @@ namespace uptp {
 
 		std::array<uint8, 6> mac_addr;
 	};
-
-
 
 }
 

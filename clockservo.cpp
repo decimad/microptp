@@ -44,7 +44,9 @@ namespace uptp {
 		auto value                             = util::to<int32>(util::add<int32, -8>(proportional, integrator_state_));
 
 		if(output) {
+#ifdef MICROPTP_DIAGNOSTICS
 			trace_printf(0, "Offset: %10d ns ahead. PI output (speeding up by): %10d ppb + (integrator: %10d) (scaled_off: %10d, delta_int: %10d)\n", offset_nanos, value-util::to<int32>(integrator_state_), util::to<int32>(integrator_state_), scaled_off_value, delta_integrator );
+#endif
 			output( value );
 		}
 	}

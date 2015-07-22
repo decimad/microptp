@@ -56,9 +56,11 @@ namespace uptp {
 
 					int32 delay_nanos = static_cast<int32>(lhs + rhs);
 
+#ifdef MICROPTP_DIAGNOSTICS
 					if(util::abs(delay_nanos) > 50000000) {
 						trace_printf(0, "Bad delay on estimating one way delay (>50ms)\n");
 					}
+#endif
 
 					one_way_delay_buffer_.add(delay_nanos);
 
@@ -68,17 +70,20 @@ namespace uptp {
 						auto ppb = util::mul_precise<int32, 0, int64>(drift_minus_one, 1000000000);
 
 						//int32 ppb         = static_cast<int32>(((static_cast<int64>(drift) * 1000000000) >> 30) - 1000000000);
+#ifdef MICROPTP_DIAGNOSTICS
 						trace_printf(0, "Estimated ppb: %d\n", ppb.value);
-
+#endif
 
 						one_way_delay_buffer_.add(delay_nanos);
 						int32 mean_one_way_delay = one_way_delay_buffer_.average();
 
+#ifdef MICROPTP_DIAGNOSTICS
 						if(util::abs(mean_one_way_delay) > 50000000) {
 							trace_printf(0, "Bad mean delay on estimating one way delay (>50ms)\n");
 						} else {
 							trace_printf(0, "Mean one way delay: %d nanos\n", mean_one_way_delay);
 						}
+#endif
 
 						// Fixme: use the mean offset + 1/2 * t * drift for a better estimate!
 						//Time difftime = slave.uncorrected_offset_buffer_.average() + (sync_master_ - first_sync_master_).to_nanos()/2;
