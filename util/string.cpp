@@ -1,7 +1,7 @@
-#include <microptp/util/string.hpp>
 #include <cstdio>
 #include <cstdarg>
 #include <cstring>
+#include <microptp/util/string.hpp>
 
 namespace util {
 

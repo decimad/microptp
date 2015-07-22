@@ -39,11 +39,22 @@ namespace uptp {
 
 			void estimating_drift::on_delay(Slave& slave, Time master_time, Time slave_time)
 			{
+				using namespace fix;
+
 				// We're assuming that 8*one_way_delay doesn't reach a second!
 				if(num_syncs_received_ > 1 ) {
 					const auto nom    = (sync_master_ - first_sync_master_);
 					const auto den    = (sync_slave_  - first_sync_slave_);
-					auto drift =  util::fixed_point<int32, -30>((nom.to_nanos() << 28) / (den.to_nanos() >> 2));
+
+					const auto nom_nanos = integer_range<16000000000ull>(nom.to_nanos());
+					const auto den_nanos = integer_range<16000000000ull>(den.to_nanos());
+
+					auto drift = div<fits<1,31>, positive>(nom_nanos, den_nanos);
+					auto drift_man = static_cast<uint32>((nom.to_nanos()<<30)/(den.to_nanos()>>1));		// 1.31
+
+					double value = drift.to<double>();
+
+					//auto drift =  util::fixed_point<int32, -30>((nom.to_nanos() << 28) / (den.to_nanos() >> 2));
 
 					const auto& t0 = sync_master_;
 					const auto& t1 = sync_slave_;
@@ -51,8 +62,11 @@ namespace uptp {
 					const auto& t2 = slave_time;
 					const auto& t3 = master_time;
 
-					const int64 lhs = ((t3-t0 + t2-t1).to_nanos() / 2);
-					const int64 rhs = (((t2-t1).to_nanos()>>2)*drift.value)>>30;
+					const int32 lhs = (t3-t0 + t2-t1).to_nanos() / 2;
+
+					// manual calcs to compare lib with manual
+					const int32 rhs_man = (drift_man * (t2-t1).to_nanos()) >> 31;	// .0
+					const int32 rhs     = mul<fits<30,2>, positive>(integer_range<2000000000>((t2-t1).to_nanos()), drift).to<int32>();
 
 					int32 delay_nanos = static_cast<int32>(lhs + rhs);
 
@@ -66,10 +80,14 @@ namespace uptp {
 
 					if(num_syncs_received_ >= 8) {
 						// We're really assuming that getting the first 8 syncs took less than 16 seconds here!
-						auto drift_minus_one = util::sub<int32, -30>(drift, util::fixed_point<int32, 0>(1));
-						auto ppb = util::mul_precise<int32, 0, int64>(drift_minus_one, 1000000000);
 
-						//int32 ppb         = static_cast<int32>(((static_cast<int64>(drift) * 1000000000) >> 30) - 1000000000);
+						// manual calcs to compare lib with manual
+						const auto drift_minus_one_man = int(drift_man) - int(1l<<31);                          //  1.31
+						const auto ppb_man             = int32((int64(drift_minus_one_man) * 1000000000u)>>31);	// 20.0
+
+						const auto drift_minus_one     = sub<>(drift, FIXED_INTEGER(1));
+						const auto ppb                 = mul<fits<20,12>>(drift_minus_one, FIXED_INTEGER(1000000000u)).to<int32>();
+
 #ifdef MICROPTP_DIAGNOSTICS
 						trace_printf(0, "Estimated ppb: %d\n", ppb.value);
 #endif
@@ -90,15 +108,15 @@ namespace uptp {
 						int64 offset_nanos = uncorrected_offset_buffer_.average();
 						Time mean_uncorrected_offset = Time(offset_nanos/1000000000, offset_nanos%1000000000) + first_sync_master_ - first_sync_slave_;
 
-						auto test_time = util::mul_precise<int32, 0, int64>(drift_minus_one, (nom/2).to_nanos()).value;
+						auto test_time = mul<fits<2,30>>(drift_minus_one, integer((nom/2).to_nanos())).to<int32>();
 
 						Time offset = mean_uncorrected_offset - Time(0, mean_one_way_delay) + Time(0, test_time);
 						trace_printf(0, "Offsetting clock by %d secs %d nanos.\n", static_cast<int32>(offset.secs_), offset.nanos_);
 
 						auto& port = slave.clock_.get_system_port();
 						port.adjust_time(offset);
-						port.discipline(ppb.value);
-						slave.servo_.reset(ppb.value);		// initialize the servo integrator!
+						port.discipline(ppb);
+						slave.servo_.reset(ppb);		// initialize the servo integrator!
 						slave.states_.to_state<pi_operational>(mean_one_way_delay);
 					}
 				}

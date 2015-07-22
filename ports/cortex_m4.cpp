@@ -10,7 +10,6 @@
 #include <chbsem.h>
 #include <stm/trace.h>
 
-
 namespace uptp {
 
 	struct sysport_message {

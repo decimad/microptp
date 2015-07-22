@@ -12,13 +12,14 @@ namespace util {
 		static const int exp  = E;
 		static const int base = B;
 	};
-
+/*
 	// Returns absolute value (remember that this might convert -128 back to -128 in a signed char f.e...)
 	template< typename T >
 	constexpr T abs(T value)
 	{
 		return (value < 0) ? (-value) : (value);
 	}
+*/
 	
 	namespace detail {
 		constexpr int log_bigger(double value, double base) {

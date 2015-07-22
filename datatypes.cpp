@@ -1,5 +1,4 @@
 #include <microptp/ptpdatatypes.hpp>
-#include <microptp/util/fixedpoint.hpp>
 #include <tuple>
 #include <cstring> // need memcmp
 

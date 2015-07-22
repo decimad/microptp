@@ -41,6 +41,12 @@ namespace util {
 		return (a < b) ? a : b;
 	}
 
+	template<typename T>
+	constexpr T abs(T value)
+	{
+		return (value >= 0) ? value : -value;
+	}
+
 }
 
 #endif

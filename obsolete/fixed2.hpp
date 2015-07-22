@@ -4,7 +4,7 @@
 
 #include <type_traits>
 #include <utility>
-#include "mathutil.hpp"
+#include <microptp/util/mathutil.hpp>
 
 namespace util {
 	
@@ -230,6 +230,7 @@ namespace util {
 
 			constexpr static int destsize = sizeof(DestType) * 8 - ((std::is_signed<DestType>::value && !std::is_signed<TA>::value && !std::is_signed<TB>::value) ? 1 : 0);
 
+			// Calculate I and F resulting from plain division.
 			// exp(a, x) = -f(a) + min(i(a), 0) - o(a) + x
 			//
 			// exp(a/b, x) = exp(a, x) - exp(b, x) + x
@@ -250,15 +251,16 @@ namespace util {
 			// -f(a/b)               = -f(a) + min(i(a), 0) - i(a) - o(a) - min(i(b), 0) + o(b)
 			//  f(a/b)               =  f(a) - min(i(a), 0) + i(a) + o(a) + min(i(b), 0) - o(b)
 
-			constexpr static int shift_a = A::free_bits;
-			constexpr static int shift_b = -B::offset;
-
 			constexpr static int RF = (AI + BF >= 0) ?
 				(AF - min(AI, 0) + AO - BF + min(BI, 0) - BO) :
 				(AF - min(AI, 0) + AO + AI + min(BI, 0) - BO);
 
 			constexpr static int RI = destsize - RF;
 			constexpr static unsigned int RO = 0;
+
+			// not assuming anything, this is the best we can do.
+			constexpr static int shift_a = A::free_bits;
+			constexpr static int shift_b = -B::offset;
 		};
 
 		template< typename OtherFixed, typename T, int I, int F, unsigned int O >
@@ -310,8 +312,8 @@ namespace util {
 		constexpr auto div_impl(fixed<LT, LI, LF, LO> nom, fixed<RT, RI, RF, RO> den)
 		{
 			return fixed< DestType,
-				detail::div_shifts<DestType, fixed<LT, LI, LF, LO>, fixed<RT, RI, RF, RO>>::RI,
-				detail::div_shifts<DestType, fixed<LT, LI, LF, LO>, fixed<RT, RI, RF, RO>>::RF, 
+				detail::div_shifts<DestType, decltype(nom), decltype(den)>::RI,
+				detail::div_shifts<DestType, decltype(nom), decltype(den)>::RF,
 				0 >(nom.value / den.value);
 		}
 
@@ -358,6 +360,114 @@ namespace util {
 			detail::div_match_den<DestType>(rhs)
 		);
 	}
+
+	//
+	// assuming impl
+	//
+	namespace detail {
+
+		/*
+		 * Considerations:
+		 * The given ResultType might be signed or unsigned, what to do with this information?
+		 * The given ResultType might be larger or smaller, what to do with this information?
+		 * The intermediate type might be larger or smaller, what to do with this information?
+		 */
+
+		template< typename T > struct promote_struct {
+			using type =  T;
+		};
+
+		template<> struct promote_struct< signed char > { using type = short; };
+		template<> struct promote_struct< short > { using type = unsigned int; };
+		template<> struct promote_struct< int > { using type = int64; };
+
+		template<> struct promote_struct<unsigned char> { using type = unsigned short; };
+		template<> struct promote_struct<unsigned short> { using type = unsigned int; };
+		template<> struct promote_struct<unsigned int> { using type = uint64; };
+
+		template< typename T >
+		using promoted_t = typename promote_struct<T>::type;
+
+
+		template< typename SourceType, typename DestType >
+		struct shift_fit_struct;
+
+		template< typename ST, int SI, int SF, unsigned int SO,
+		          typename DT, int DI, int DF, unsigned int DO >
+		struct shift_fit_struct< fixed<ST,SI,SF,SO>, fixed<DT,DI,DF,DO> > {
+
+			using result_type = fixed<DT,DI,DF,DO>;
+			using source_type = fixed<ST,SI,SF,SO>;
+
+			static constexpr int dist = DO+DF-SO-SF;
+
+			// If dest is larger and we need to shift up above source bounds
+			std::enable_if_t<is_larger_type<DT,ST>::value && dist > source_type::free_bits, result_type>
+			shift( source_type source ) {
+				// first cast, then shift
+				return result_type(util::shift(static_cast<typename result_type::value_type>(source.value), dist));
+			}
+
+			// Else
+			std::enable_if_t<!is_larger_type<DT,ST>::value || dist <= source_type::free_bits, result_type>
+			shift( source_type source ) {
+				// first shift, then case
+				return result_type(util::shift(source.value, dist));
+			}
+		};
+
+
+
+
+		template< typename DestType, typename SourceType >
+		DestType shift_fit(SourceType source) {
+			return shift_fit_struct<SourceType, DestType>::shift(source);
+		}
+
+		template< typename ResultType, bool AllowPromote = false,
+				  typename LT, int LI, int LF, int LO,
+				  typename RT, int RI, int RF, int RO >
+		ResultType add_assuming( fixed<LT,LI,LF,LO> lhs, fixed<RT,RI,RF,RO> rhs )
+		{
+			// shift fitting, cast to smaller_type_t<ResultType::value_type, LT/RT>
+		}
+
+
+
+
+	}
+
+
+
+
+
+	//
+	// Assumes the result of an operation fits into a given Result type.
+	//
+	template< typename ResultType, typename AllowedIntermediate = typename ResultType::value_type >
+	struct assume {
+
+		template< typename Lhs, typename Rhs >
+		constexpr static ResultType add( Lhs lhs, Rhs rhs ) {
+			return detail::add_assuming<ResultType, AllowedIntermediate>(lhs, rhs);
+		}
+
+		template< typename Lhs, typename Rhs >
+		constexpr static ResultType sub( Lhs lhs, Rhs rhs ) {
+			return detail::sub_assuming<ResultType, AllowedIntermediate>(lhs, rhs);
+		}
+
+		template< typename Lhs, typename Rhs >
+		constexpr static ResultType mul( Lhs lhs, Rhs rhs ) {
+			return detail::mul_assuming<ResultType, AllowedIntermediate>(lhs, rhs);
+		}
+
+		template< typename Lhs, typename Rhs >
+		constexpr static ResultType div( Lhs lhs, Rhs rhs ) {
+			return detail::div_assuming<ResultType, AllowedIntermediate>(lhs, rhs);
+		}
+
+	};
 
 }
 
