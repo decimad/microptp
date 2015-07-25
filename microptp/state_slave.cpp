@@ -3,6 +3,7 @@
 #include <microptp/ports/systemport.hpp>
 #include <stm/trace.h>
 
+
 namespace uptp {
 
 	namespace states {
@@ -40,35 +41,21 @@ namespace uptp {
 			void estimating_drift::on_delay(Slave& slave, Time master_time, Time slave_time)
 			{
 				using namespace fix;
+				using large_nanos_type = FIXED_RANGE_I(0, 16000000000ull);
+				using small_nanos_type = FIXED_RANGE_I(0,2000000000u);
+				using drift_type = FIXED_RANGE(0.99, 1.01, 32);
 
 				// We're assuming that 8*one_way_delay doesn't reach a second!
-				if(num_syncs_received_ > 1 ) {
-					const auto nom    = (sync_master_ - first_sync_master_);
-					const auto den    = (sync_slave_  - first_sync_slave_);
-
-					const auto nom_nanos = integer_range<16000000000ull>(nom.to_nanos());
-					const auto den_nanos = integer_range<16000000000ull>(den.to_nanos());
-
-					auto drift = div<fits<1,31>, positive>(nom_nanos, den_nanos);
-					auto drift_man = static_cast<uint32>((nom.to_nanos()<<30)/(den.to_nanos()>>1));		// 1.31
-
-					double value = drift.to<double>();
-
-					//auto drift =  util::fixed_point<int32, -30>((nom.to_nanos() << 28) / (den.to_nanos() >> 2));
-
+				if(num_syncs_received_ >= 1 ) {
 					const auto& t0 = sync_master_;
 					const auto& t1 = sync_slave_;
 
 					const auto& t2 = slave_time;
 					const auto& t3 = master_time;
 
-					const int32 lhs = (t3-t0 + t2-t1).to_nanos() / 2;
+					const int32 delay_nanos = (t3-t0 + t2-t1).to_nanos() / 2;
+					one_way_delay_buffer_.add(delay_nanos);
 
-					// manual calcs to compare lib with manual
-					const int32 rhs_man = (drift_man * (t2-t1).to_nanos()) >> 31;	// .0
-					const int32 rhs     = mul<fits<30,2>, positive>(integer_range<2000000000>((t2-t1).to_nanos()), drift).to<int32>();
-
-					int32 delay_nanos = static_cast<int32>(lhs + rhs);
 
 #ifdef MICROPTP_DIAGNOSTICS
 					if(util::abs(delay_nanos) > 50000000) {
@@ -76,23 +63,21 @@ namespace uptp {
 					}
 #endif
 
-					one_way_delay_buffer_.add(delay_nanos);
-
 					if(num_syncs_received_ >= 8) {
+						const auto nom    = (sync_master_ - first_sync_master_);
+						const auto den    = (sync_slave_  - first_sync_slave_);
+
+						const large_nanos_type nom_nanos(nom.to_nanos());
+						const drift_type drift = div<fits<1,31>, positive>(nom_nanos, large_nanos_type(den.to_nanos()));
+
 						// We're really assuming that getting the first 8 syncs took less than 16 seconds here!
-
-						// manual calcs to compare lib with manual
-						const auto drift_minus_one_man = int(drift_man) - int(1l<<31);                          //  1.31
-						const auto ppb_man             = int32((int64(drift_minus_one_man) * 1000000000u)>>31);	// 20.0
-
-						const auto drift_minus_one     = sub<>(drift, FIXED_INTEGER(1));
-						const auto ppb                 = mul<fits<20,12>>(drift_minus_one, FIXED_INTEGER(1000000000u)).to<int32>();
+						const auto drift_minus_one = drift-FIXED_CONSTANT_I(1);
+						const auto ppb = (drift_minus_one*FIXED_CONSTANT_I(1000000000u)).to<int32>();
 
 #ifdef MICROPTP_DIAGNOSTICS
 						trace_printf(0, "Estimated ppb: %d\n", ppb.value);
 #endif
 
-						one_way_delay_buffer_.add(delay_nanos);
 						int32 mean_one_way_delay = one_way_delay_buffer_.average();
 
 #ifdef MICROPTP_DIAGNOSTICS
@@ -104,13 +89,11 @@ namespace uptp {
 #endif
 
 						// Fixme: use the mean offset + 1/2 * t * drift for a better estimate!
-						//Time difftime = slave.uncorrected_offset_buffer_.average() + (sync_master_ - first_sync_master_).to_nanos()/2;
-						int64 offset_nanos = uncorrected_offset_buffer_.average();
-						Time mean_uncorrected_offset = Time(offset_nanos/1000000000, offset_nanos%1000000000) + first_sync_master_ - first_sync_slave_;
+						int64 offset_mean = uncorrected_offset_buffer_.average();
+						Time mean_uncorrected_offset = Time(offset_mean/1000000000, offset_mean%1000000000) + first_sync_master_ - first_sync_slave_;
 
-						auto test_time = mul<fits<2,30>>(drift_minus_one, integer((nom/2).to_nanos())).to<int32>();
-
-						Time offset = mean_uncorrected_offset - Time(0, mean_one_way_delay) + Time(0, test_time);
+						const int64 corrected_half = fix::virtual_shift<-1>(drift_minus_one * nom_nanos).to<int64>();
+						Time offset = mean_uncorrected_offset + Time(0, mean_one_way_delay) /*+ Time(corrected_half/1000000000, corrected_half%1000000000)*/;
 						trace_printf(0, "Offsetting clock by %d secs %d nanos.\n", static_cast<int32>(offset.secs_), offset.nanos_);
 
 						auto& port = slave.clock_.get_system_port();
@@ -167,7 +150,7 @@ namespace uptp {
 				}
 
 				if(last_time_.secs_ != 0) {
-					int32 offset = uncorrected_offset_buffer_.average() - one_way_delay_buffer_.average();
+					int32 offset = uncorrected_offset_buffer_.average() + one_way_delay_buffer_.average();
 					uint32 dt    = static_cast<uint32>((slave_time - last_time_).to_nanos());
 					slave.servo_.feed(dt, offset);
 				}
