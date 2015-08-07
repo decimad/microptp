@@ -50,7 +50,6 @@ namespace uptp {
 	bool operator>=(const Time&, const Time&);
 	bool operator==(const Time&, const Time&);
 
-//	#include "def/derivedData/clockQuality.def"
 	struct ClockQuality {
 		uint16 offset_scaled_log_variance;
 		uint8 clock_class;

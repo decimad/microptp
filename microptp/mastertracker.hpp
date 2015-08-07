@@ -2,7 +2,7 @@
 #define MICROPTP_MASTERTRACKER_HPP__
 
 #include <microptp/uptp.hpp>
-#include <microptp/util/functional.hpp>
+#include <microlib/functional.hpp>
 #include <microptp/ptpdatatypes.hpp>
 #include <microptp/messages.hpp>
 #include <algorithm>

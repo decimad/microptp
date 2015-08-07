@@ -1,8 +1,7 @@
+#include <microptp/config.hpp>
 #include <microptp/ptpclock.hpp>
 #include <microptp/messages.hpp>
 #include <microptp/ports/systemport.hpp>
-#include <stm/trace.h>
-
 
 namespace uptp {
 
@@ -56,12 +55,9 @@ namespace uptp {
 					const int32 delay_nanos = (t3-t0 + t2-t1).to_nanos() / 2;
 					one_way_delay_buffer_.add(delay_nanos);
 
-
-#ifdef MICROPTP_DIAGNOSTICS
 					if(util::abs(delay_nanos) > 50000000) {
-						trace_printf(0, "Bad delay on estimating one way delay (>50ms)\n");
+						TRACE("Bad delay on estimating one way delay (>50ms)\n");
 					}
-#endif
 
 					if(num_syncs_received_ >= 8) {
 						const auto nom    = (sync_master_ - first_sync_master_);
@@ -74,19 +70,15 @@ namespace uptp {
 						const auto drift_minus_one = drift-FIXED_CONSTANT_I(1);
 						const auto ppb = (drift_minus_one*FIXED_CONSTANT_I(1000000000u)).to<int32>();
 
-#ifdef MICROPTP_DIAGNOSTICS
-						trace_printf(0, "Estimated ppb: %d\n", ppb.value);
-#endif
+						TRACE("Estimated ppb: %d\n", ppb.value);
 
 						int32 mean_one_way_delay = one_way_delay_buffer_.average();
 
-#ifdef MICROPTP_DIAGNOSTICS
 						if(util::abs(mean_one_way_delay) > 50000000) {
-							trace_printf(0, "Bad mean delay on estimating one way delay (>50ms)\n");
+							TRACE("Bad mean delay on estimating one way delay (>50ms)\n");
 						} else {
-							trace_printf(0, "Mean one way delay: %d nanos\n", mean_one_way_delay);
+							TRACE("Mean one way delay: %d nanos\n", mean_one_way_delay);
 						}
-#endif
 
 						// Fixme: use the mean offset + 1/2 * t * drift for a better estimate!
 						int64 offset_mean = uncorrected_offset_buffer_.average();
@@ -123,7 +115,7 @@ namespace uptp {
 				Time offset  = master_time - slave_time;
 
 				if(offset.secs_ != 0 || util::abs(offset.nanos_) > 50000000) {
-					trace_printf(0, "Bad estimatation preset! (secs: %d nanos: %d)\n", static_cast<int32>(offset.secs_), offset.nanos_);
+					TRACE("Bad estimatation preset! (secs: %d nanos: %d)\n", static_cast<int32>(offset.secs_), offset.nanos_);
 				}
 
 				if(offset.secs_ == 0) {
@@ -141,7 +133,7 @@ namespace uptp {
 				const Time one_way_delay = ((t3-t0)-(t2-t1))/2;
 
 				if((one_way_delay.secs_ != 0) || (util::abs(one_way_delay.nanos_) > 50000000)) {
-					trace_printf(0, "PI Operational: Bad One-Way Delay: %d\n", one_way_delay.nanos_);
+					TRACE("PI Operational: Bad One-Way Delay: %d\n", one_way_delay.nanos_);
 				}
 
 

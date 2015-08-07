@@ -1,8 +1,18 @@
 #ifndef MICROPTP_PORTS_SYSTEMPORT_HPP__
 #define MICROPTP_PORTS_SYSTEMPORT_HPP__
 
-#include <microptp/ports/cortex_m4_util.hpp>
-#include <microptp/ports/cortex_m4.hpp>
+#include "microptp_config.hpp"
+
+#ifdef MICROPTP_PORT_CORTEX_M4
+#include <microptp/ports/cortex_m4/cortex_m4_util.hpp>
+#include <microptp/ports/cortex_m4/cortex_m4.hpp>
+#endif
+
+#ifdef MICROPTP_PORT_CORTEX_M4_INTHREAD
+#include <microptp/ports/cortex_m4_inthread/cortex_m4_util.hpp>
+#include <microptp/ports/cortex_m4_inthread/cortex_m4.hpp>
+#endif
+
 #include <microptp/ports/systemport_defaults.hpp>
 
 #endif

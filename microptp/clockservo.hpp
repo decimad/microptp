@@ -4,9 +4,9 @@
 #pragma once
 #include <microptp/uptp.hpp>
 #include <microptp/ptpdatatypes.hpp>
-#include <microptp/util/functional.hpp>
-#include <microptp/util/circularbuffer.hpp>
-#include <microptp/util/statemachine.hpp>
+#include <microlib/functional.hpp>
+#include <microlib/circular_buffer.hpp>
+#include <microlib/statemachine.hpp>
 #include <fixed/fixed.hpp>
 
 namespace uptp {

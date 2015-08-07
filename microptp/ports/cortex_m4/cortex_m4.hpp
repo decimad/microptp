@@ -3,7 +3,7 @@
 
 #include <microptp/ptpdatatypes.hpp>
 #include <microptp/ptpclock.hpp>
-#include <microptp/ports/cortex_m4_util.hpp>
+#include <microptp/ports/cortex_m4/cortex_m4_util.hpp>
 #include <microptp/uptp.hpp>
 #include <thread.hpp>
 

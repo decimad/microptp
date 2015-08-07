@@ -1,14 +1,18 @@
+#include "microptp_config.hpp"
+
+#ifdef MICROPTP_PORT_CORTEX_M4
+
 #include <lwip/tcpip.h>
 #include <lwip/udp.h>
 #include <lwip/igmp.h>
-#include <stm/util/intrusive_pool.hpp>
-#include <stm/eth/lwip/custom_buffer.hpp>
-#include <stm/eth.hpp>
-#include <microptp/util/static_union.hpp>
-#include <microptp/ports/cortex_m4.hpp>
+#include <microlib/pool.hpp>
+#include <stmlib/eth/lwip/custom_buffer.hpp>
+#include <stmlib/eth.hpp>
+#include <microlib/variant.hpp>
+#include <microptp/ports/cortex_m4/cortex_m4.hpp>
 #include <chmboxes.h>	// Mailbox for UPTP thread
 #include <chbsem.h>
-#include <stm/trace.h>
+#include <stmlib/trace.h>
 
 namespace uptp {
 
@@ -476,3 +480,5 @@ namespace uptp {
 	}
 
 }
+
+#endif

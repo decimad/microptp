@@ -1,8 +1,8 @@
 #ifndef MICROPTP_PTPCLOCK_HPP__
 #define MICROPTP_PTPCLOCK_HPP__
 
-#include <microptp/util/statemachine.hpp>
-#include <microptp/util/string.hpp>
+#include <microlib/statemachine.hpp>
+#include <microlib/string.hpp>
 #include <microptp/ports/systemport_defaults.hpp>
 #include <microptp/messages.hpp>
 #include <microptp/clockservo.hpp>

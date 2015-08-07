@@ -1,6 +1,6 @@
 #include <microptp/ptpclock.hpp>
 #include <microptp/ports/systemport.hpp>
-#include <stm/trace.h>
+#include <stmlib/trace.h>
 
 namespace uptp {
 

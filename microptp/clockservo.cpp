@@ -1,6 +1,6 @@
+#include <microptp/config.hpp>
 #include <microptp/clockservo.hpp>
 #include <microptp/ports/systemport.hpp>
-#include <stm/trace.h>
 
 namespace uptp {
 
@@ -43,9 +43,7 @@ namespace uptp {
 		const auto result       = proportional + integrator_state_;
 
 		if(output) {
-//#ifdef MICROPTP_DIAGNOSTICS
-			trace_printf(0, "Offset: %10d ns ahead. PI output (speeding up by): %10d ppb + (integrator: %10d)\n", offset_nanos, result.to<int32>()-integrator_state_.to<int32>(), integrator_state_.to<int32>());
-//#endif
+			TRACE("Offset: %10d ns ahead. PI output (speeding up by): %10d ppb + (integrator: %10d)\n", offset_nanos, result.to<int32>()-integrator_state_.to<int32>(), integrator_state_.to<int32>());
 			output( result.to<int>() );
 		}
 	}

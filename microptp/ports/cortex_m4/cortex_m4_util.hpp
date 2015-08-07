@@ -1,11 +1,11 @@
 #ifndef SYSTEM_MICROPTP_PORTS_CORTEX_M4_UTIL_HPP_
 #define SYSTEM_MICROPTP_PORTS_CORTEX_M4_UTIL_HPP_
 
-#include <stm/util/intrusive_pool.hpp>
-#include <microptp/util/functional.hpp>
+#include <microlib/intrusive_pool.hpp>
+#include <microlib/functional.hpp>
 #include <microptp/ptpdatatypes.hpp>
 #include <lwip/api.h>
-#include <stm/eth/lwip/custom_buffer.hpp>
+#include <stmlib/eth/lwip/custom_buffer.hpp>
 
 namespace uptp {
 

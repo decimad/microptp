@@ -1,4 +1,0 @@
-[submodule "fixed"]
-	path = fixed
-	url = https://github.com/decimad/fixed.git
-	branch = master

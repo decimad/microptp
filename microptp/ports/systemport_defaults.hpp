@@ -2,7 +2,7 @@
 #define MICROPTP_PORTS_SYSTEMPORT_DEFAULTS_HPP__
 
 #include <microptp/types.hpp>
-#include <microptp/ports/cortex_m4_util.hpp>
+#include <microptp/ports/cortex_m4/cortex_m4_util.hpp>
 
 namespace uptp {
 
