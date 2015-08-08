@@ -27,9 +27,9 @@ namespace uptp {
 	void Time::normalize()
 	{
 		if (nanos_ <= -1000000000) {
-			nanos_ += -1000000000;
+			nanos_ += 1000000000;
 			--secs_;
-		} else if (nanos_ > 1000000000) {
+		} else if (nanos_ >= 1000000000) {
 			nanos_ -= 1000000000;
 			++secs_;
 		}
@@ -62,12 +62,12 @@ namespace uptp {
 		return result;
 	}
 
-	Time operator/(const Time& time, int divisor)
+	Time operator/(const Time& nom, int den)
 	{
 		Time result;
-		result.nanos_ = time.nanos_ / divisor;
-		result.nanos_ += 1000000000l * (time.secs_ % divisor) / divisor;
-		result.secs_ = time.secs_ / divisor;
+		result.nanos_ = nom.nanos_ / den;
+		result.nanos_ += 1000000000l * (nom.secs_ % den) / den;
+		result.secs_ = nom.secs_ / den;
 		return result;
 	}
 
