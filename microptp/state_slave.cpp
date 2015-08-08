@@ -55,7 +55,7 @@ namespace uptp {
 					const int32 delay_nanos = (t3-t0 + t2-t1).to_nanos() / 2;
 					one_way_delay_buffer_.add(delay_nanos);
 
-					if(util::abs(delay_nanos) > 50000000) {
+					if(::util::abs(delay_nanos) > 50000000) {
 						TRACE("Bad delay on estimating one way delay (>50ms)\n");
 					}
 
@@ -68,13 +68,14 @@ namespace uptp {
 
 						// We're really assuming that getting the first 8 syncs took less than 16 seconds here!
 						const auto drift_minus_one = drift-FIXED_CONSTANT_I(1);
-						const auto ppb = (drift_minus_one*FIXED_CONSTANT_I(1000000000u)).to<int32>();
+						const auto ppb_fixed = (drift_minus_one*FIXED_CONSTANT_I(1000000000u));
+						const auto ppb = ppb_fixed.to<int32>();
 
-						TRACE("Estimated ppb: %d\n", ppb.value);
+						TRACE("Estimated ppb: %d\n", ppb);
 
 						int32 mean_one_way_delay = one_way_delay_buffer_.average();
 
-						if(util::abs(mean_one_way_delay) > 50000000) {
+						if(::util::abs(mean_one_way_delay) > 50000000) {
 							TRACE("Bad mean delay on estimating one way delay (>50ms)\n");
 						} else {
 							TRACE("Mean one way delay: %d nanos\n", mean_one_way_delay);
@@ -86,7 +87,7 @@ namespace uptp {
 
 						const int64 corrected_half = fix::virtual_shift<-1>(drift_minus_one * nom_nanos).to<int64>();
 						Time offset = mean_uncorrected_offset + Time(0, mean_one_way_delay) /*+ Time(corrected_half/1000000000, corrected_half%1000000000)*/;
-						trace_printf(0, "Offsetting clock by %d secs %d nanos.\n", static_cast<int32>(offset.secs_), offset.nanos_);
+						TRACE("Offsetting clock by %d secs %d nanos.\n", static_cast<int32>(offset.secs_), offset.nanos_);
 
 						auto& port = slave.clock_.get_system_port();
 						port.adjust_time(offset);
