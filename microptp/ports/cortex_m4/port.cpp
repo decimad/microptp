@@ -1,7 +1,7 @@
-#include "microptp_config.hpp"
-
+#include <microptp_config.hpp>
 #ifdef MICROPTP_PORT_CORTEX_M4
 
+#include <lwip/ip.h>
 #include <lwip/tcpip.h>
 #include <lwip/udp.h>
 #include <lwip/igmp.h>
@@ -9,7 +9,7 @@
 #include <stmlib/eth/lwip/custom_buffer.hpp>
 #include <stmlib/eth.hpp>
 #include <microlib/variant.hpp>
-#include <microptp/ports/cortex_m4/cortex_m4.hpp>
+#include <microptp/ports/cortex_m4/port.hpp>
 #include <chmboxes.h>	// Mailbox for UPTP thread
 #include <chbsem.h>
 #include <stmlib/trace.h>
@@ -61,7 +61,7 @@ namespace uptp {
 	struct recv_data_struct
 	{
 		PacketHandle packet;
-		ip_addr addr;
+		ip_addr_t addr;
 		UdpStruct* udp_struct;
 	};
 
@@ -123,7 +123,7 @@ namespace uptp {
 	}
 
 	// called in context of tcpip-thread
-	void UdpStruct::on_recv_tcpthread( void * arg, struct udp_pcb * upcb, struct pbuf * p, struct ip_addr * addr, u16_t port)
+	void UdpStruct::on_recv_tcpthread( void * arg, struct udp_pcb * upcb, struct pbuf * p, const ip_addr_t * addr, u16_t port)
 	{
 		UdpStruct& udp_struct = *reinterpret_cast<UdpStruct*>(arg);
 		PacketHandle handle(eth::lwip::ptr_from_pbuf(p));
@@ -152,7 +152,7 @@ namespace uptp {
 	struct send_struct {
 		udp_pcb* upcb;
 		PacketHandle handle;
-		ip_addr addr;
+		ip_addr_t addr;
 		uint16 port;
 		BinarySemaphore sema;
 	};

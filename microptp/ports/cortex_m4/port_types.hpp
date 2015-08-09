@@ -1,10 +1,13 @@
 #ifndef SYSTEM_MICROPTP_PORTS_CORTEX_M4_UTIL_HPP_
 #define SYSTEM_MICROPTP_PORTS_CORTEX_M4_UTIL_HPP_
 
+#include <microptp_config.hpp>
+#ifdef MICROPTP_PORT_CORTEX_M4
+
 #include <microlib/intrusive_pool.hpp>
 #include <microlib/functional.hpp>
 #include <microptp/ptpdatatypes.hpp>
-#include <lwip/api.h>
+#include <lwip/ip.h>
 #include <stmlib/eth/lwip/custom_buffer.hpp>
 
 namespace uptp {
@@ -69,7 +72,7 @@ namespace uptp {
 		uint32 transmit_id;
 
 		static void create_udp( void* arg );
-		static void on_recv_tcpthread( void * arg, struct udp_pcb * upcb, struct pbuf * p, struct ip_addr * addr, u16_t port);
+		static void on_recv_tcpthread( void * arg, struct udp_pcb * upcb, struct pbuf * p, const ip_addr_t * addr, u16_t port);
 
 		friend class udp_messages;
 		void on_recv_portthread( recv_data_struct& data );
@@ -83,4 +86,5 @@ namespace uptp {
 
 }
 
+#endif
 #endif

@@ -4,15 +4,14 @@
 #include "microptp_config.hpp"
 
 #ifdef MICROPTP_PORT_CORTEX_M4
-#include <microptp/ports/cortex_m4/cortex_m4_util.hpp>
-#include <microptp/ports/cortex_m4/cortex_m4.hpp>
+#include <microptp/ports/cortex_m4/port.hpp>
 #endif
 
-#ifdef MICROPTP_PORT_CORTEX_M4_INTHREAD
-#include <microptp/ports/cortex_m4_inthread/cortex_m4_util.hpp>
-#include <microptp/ports/cortex_m4_inthread/cortex_m4.hpp>
+#ifdef MICROPTP_PORT_CORTEX_M4_ONETHREAD
+#include <microptp/ports/cortex_m4_onethread/port.hpp>
 #endif
 
+#include <microptp/ports/systemportapi.hpp>
 #include <microptp/ports/systemport_defaults.hpp>
 
 #endif

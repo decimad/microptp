@@ -3,7 +3,7 @@
 
 #include <microlib/statemachine.hpp>
 #include <microlib/string.hpp>
-#include <microptp/ports/systemport_defaults.hpp>
+#include <microptp/ports/systemportapi.hpp>
 #include <microptp/messages.hpp>
 #include <microptp/clockservo.hpp>
 #include <microptp/ptpdatatypes.hpp>

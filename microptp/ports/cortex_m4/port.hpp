@@ -1,9 +1,12 @@
 #ifndef MICROPTP_PORTS_CORTEX_M4_HPP__
 #define MICROPTP_PORTS_CORTEX_M4_HPP__
 
+#include <microptp_config.hpp>
+#ifdef MICROPTP_PORT_CORTEX_M4
+
 #include <microptp/ptpdatatypes.hpp>
 #include <microptp/ptpclock.hpp>
-#include <microptp/ports/cortex_m4/cortex_m4_util.hpp>
+#include <microptp/ports/cortex_m4/port_types.hpp>
 #include <microptp/uptp.hpp>
 #include <thread.hpp>
 
@@ -84,4 +87,5 @@ namespace uptp {
 }
 
 #define UPTP_SLAVE_ONLY
+#endif
 #endif

@@ -1,6 +1,6 @@
+#include <microptp/config.hpp>
 #include <microptp/ptpclock.hpp>
 #include <microptp/ports/systemport.hpp>
-#include <stmlib/trace.h>
 
 namespace uptp {
 
@@ -66,6 +66,8 @@ namespace uptp {
 	void PtpClock::on_network_changed() {
 		auto& sys = get_system_port();
 
+		PRINT("Network changed!\n");
+
 		event_port_   = sys.make_udp(319);
 		general_port_ = sys.make_udp(320);
 
@@ -74,8 +76,6 @@ namespace uptp {
 
 			event_port_->on_received   = util::function<void(PacketHandle)>(this, &PtpClock::on_event_message);
 			general_port_->on_received = util::function<void(PacketHandle)>(this, &PtpClock::on_general_message);
-
-			//statemachine_.to_state<states::Listening>(*this);
 		}
 
 	}

@@ -3,6 +3,10 @@
 
 #include <microptp_config.hpp>
 
+#ifndef PRINT
+#define PRINT(...)
+#endif
+
 #ifndef TRACE
 #define TRACE(...)
 #endif
