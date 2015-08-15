@@ -74,8 +74,8 @@ namespace uptp {
 		if( event_port_ && general_port_ ) {
 			sys.join_multicast((224 << 0) | (0<<8) | (1<<16) | (129 << 24));
 
-			event_port_->on_received   = util::function<void(PacketHandle)>(this, &PtpClock::on_event_message);
-			general_port_->on_received = util::function<void(PacketHandle)>(this, &PtpClock::on_general_message);
+			event_port_->on_received   = ulib::function<void(PacketHandle)>(this, &PtpClock::on_event_message);
+			general_port_->on_received = ulib::function<void(PacketHandle)>(this, &PtpClock::on_general_message);
 		}
 
 	}

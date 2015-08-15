@@ -55,7 +55,7 @@ namespace uptp {
 					const int32 delay_nanos = (t3-t0 + t2-t1).to_nanos() / 2;
 					one_way_delay_buffer_.add(delay_nanos);
 
-					if(::util::abs(delay_nanos) > 50000000) {
+					if(ulib::abs(delay_nanos) > 50000000) {
 						TRACE("Bad delay on estimating one way delay (>50ms)\n");
 					}
 
@@ -75,7 +75,7 @@ namespace uptp {
 
 						int32 mean_one_way_delay = one_way_delay_buffer_.average();
 
-						if(::util::abs(mean_one_way_delay) > 50000000) {
+						if(ulib::abs(mean_one_way_delay) > 50000000) {
 							TRACE("Bad mean delay on estimating one way delay (>50ms)\n");
 						} else {
 							TRACE("Mean one way delay: %d nanos\n", mean_one_way_delay);
@@ -115,7 +115,7 @@ namespace uptp {
 				sync_slave_  = slave_time;
 				Time offset  = master_time - slave_time;
 
-				if(offset.secs_ != 0 || util::abs(offset.nanos_) > 50000000) {
+				if(offset.secs_ != 0 || ulib::abs(offset.nanos_) > 50000000) {
 					TRACE("Bad estimatation preset! (secs: %d nanos: %d)\n", static_cast<int32>(offset.secs_), offset.nanos_);
 				}
 
@@ -133,7 +133,7 @@ namespace uptp {
 
 				const Time one_way_delay = ((t3-t0)-(t2-t1))/2;
 
-				if((one_way_delay.secs_ != 0) || (util::abs(one_way_delay.nanos_) > 50000000)) {
+				if((one_way_delay.secs_ != 0) || (ulib::abs(one_way_delay.nanos_) > 50000000)) {
 					TRACE("PI Operational: Bad One-Way Delay: %d\n", one_way_delay.nanos_);
 				}
 
@@ -161,9 +161,9 @@ namespace uptp {
 			  sync_state_(slave_detail::SyncState::Initial),
 			  dreq_state_(slave_detail::DreqState::Initial)
 		{
-			clock_.master_tracker().best_master_changed = util::function<void()>(this, &Slave::on_best_master_changed);
-			servo_.output = util::function<void(int32)>(&clock.get_system_port(), &SystemPort::discipline);
-			clock_.event_port()->on_transmit_completed = util::function<void(uint32, Time)>(this, &Slave::on_delay_request_transmitted);
+			clock_.master_tracker().best_master_changed = ulib::function<void()>(this, &Slave::on_best_master_changed);
+			servo_.output = ulib::function<void(int32)>(&clock.get_system_port(), &SystemPort::discipline);
+			clock_.event_port()->on_transmit_completed = ulib::function<void(uint32, Time)>(this, &Slave::on_delay_request_transmitted);
 
 			states_.to_state<slave_detail::estimating_drift>();
 		}

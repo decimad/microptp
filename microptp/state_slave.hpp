@@ -35,8 +35,8 @@ namespace uptp {
 				Time sync_master_;
 				Time sync_slave_;
 
-				util::circular_averaging_buffer<int32, 8> one_way_delay_buffer_;		// if the drift is bad, delay can actually be negative!
-				util::circular_averaging_buffer<int64,  8> uncorrected_offset_buffer_;
+				ulib::circular_averaging_buffer<int32, 8> one_way_delay_buffer_;		// if the drift is bad, delay can actually be negative!
+				ulib::circular_averaging_buffer<int64,  8> uncorrected_offset_buffer_;
 			};
 
 			struct pi_operational {
@@ -49,8 +49,8 @@ namespace uptp {
 				Time sync_slave_;
 				Time last_time_;
 
-				util::circular_averaging_buffer<int32, 4> one_way_delay_buffer_;		// if the drift is bad, delay can actually be negative!
-				util::circular_averaging_buffer<int32, 4> uncorrected_offset_buffer_;
+				ulib::circular_averaging_buffer<int32, 4> one_way_delay_buffer_;		// if the drift is bad, delay can actually be negative!
+				ulib::circular_averaging_buffer<int32, 4> uncorrected_offset_buffer_;
 			};
 
 
@@ -94,7 +94,7 @@ namespace uptp {
 			friend class slave_detail::estimating_drift;
 			friend class slave_detail::pi_operational;
 
-			util::state_machine<slave_detail::estimating_drift, slave_detail::pi_operational> states_;
+			ulib::state_machine<slave_detail::estimating_drift, slave_detail::pi_operational> states_;
 
 			Time sync_receive_;	/* sync receive time from slave */
 			slave_detail::SyncState sync_state_;

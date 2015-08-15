@@ -1,5 +1,4 @@
 #include <microptp/ptpclock.hpp>
-//#include <microptp/ports/systemport.hpp>
 
 namespace uptp {
 
@@ -11,7 +10,7 @@ namespace uptp {
 			if(clock_.master_tracker().best_foreign() != nullptr) {
 				on_best_master_changed();
 			} else {
-				clock_.master_tracker().best_master_changed = util::function<void()>(this, &Listening::on_best_master_changed);
+				clock_.master_tracker().best_master_changed = ulib::function<void()>(this, &Listening::on_best_master_changed);
 			}
 		}
 

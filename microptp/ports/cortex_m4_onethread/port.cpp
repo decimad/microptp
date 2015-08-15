@@ -6,6 +6,7 @@
 #include <lwip/udp.h>
 #include <lwip/igmp.h>
 #include <stmlib/eth/lwip/custom_buffer.hpp>
+#include <stmlib/eth/lwip_onethread/lwip_thread.hpp>
 #include <stmlib/eth.hpp>
 #include <stmlib/trace.h>
 #include <microlib/variant.hpp>
@@ -26,7 +27,7 @@ namespace uptp {
 				udp_remove(pcb_);
 				pcb_ = nullptr;
 			} else {
-				::udp_recv(pcb_, &UdpStruct::on_recv, this);
+				udp_recv(pcb_, &UdpStruct::on_recv, this);
 			}
 		}
 	}
@@ -41,23 +42,11 @@ namespace uptp {
 		}
 	}
 
-	// Message payload to transfer send command from
-	// portthread to tcp thread
-	struct send_struct {
-		udp_pcb* upcb;
-		PacketHandle handle;
-		ip_addr_t addr;
-		uint16 port;
-		BinarySemaphore sema;
-	};
-
-	void send_tcpthread(void* ptr);
-
 	// called in context of SystemPort-thread
 	void UdpStruct::send( uint32 ip, uint16 port, PacketHandle handle, uint32 id )
 	{
 		transmit_id = id;
-		handle.set_transmit_callback(util::function<void(uint64,eth::lwip::custom_buffer_ptr)>(this, &UdpStruct::transmit_completed_callback));
+		handle.set_transmit_callback(ulib::function<void(uint64,eth::lwip::custom_buffer_ptr)>(this, &UdpStruct::transmit_completed_callback));
 		udp_sendto(pcb_, handle.release_pbuf(), (const ip_addr_t*) &ip, port);
 	}
 
@@ -80,9 +69,6 @@ namespace uptp {
 		}
 		return std::move(ptr);
 	}
-
-
-	util::pool<UdpStruct, 4> udp_pool;
 
 	//
 	// SystemPort
@@ -119,19 +105,19 @@ namespace uptp {
 	{
 	}
 
-	void SystemPort::make_timer(size_t id, uint32 millis)
+		TimerHandle SystemPort::make_timer(ulib::function<void()> func)
 	{
-
+		return timer_pool_.make(std::move(func));
 	}
 
-	void SystemPort::close_timer(size_t id)
+	TimerHandle SystemPort::make_timer()
 	{
-
+		return timer_pool_.make();
 	}
 
 	NetHandle SystemPort::make_udp(uint16 port)
 	{
-		return udp_pool.make(this, port);
+		return udp_pool_.make(this, port);
 	}
 
 	void SystemPort::join_multicast(uint32 multicast_addr)
@@ -156,8 +142,9 @@ namespace uptp {
 
 	void SystemPort::adjust_time(Time delta)
 	{
-		uint32 subs = eth::ptp_nanos_to_subseconds(util::abs(delta.nanos_));
-		uint32 secs = static_cast<uint32>(util::abs(delta.secs_));
+		// isn't this really an implementation detail inside the driver? maybe support Secs+Nanos AND Secs+Subsecs there as a type directly.
+		uint32 subs = eth::ptp_nanos_to_subseconds(ulib::abs(delta.nanos_));
+		uint32 secs = static_cast<uint32>(ulib::abs(delta.secs_));
 		if(delta.secs_ < 0 || delta.nanos_ < 0) {
 			subs |= 1<<31;
 		} else {
@@ -203,7 +190,7 @@ namespace uptp {
 	{
 	}
 
-	void PacketHandle::set_transmit_callback(util::function<void(uint64, eth::lwip::custom_buffer_ptr)> func)
+	void PacketHandle::set_transmit_callback(ulib::function<void(uint64, eth::lwip::custom_buffer_ptr)> func)
 	{
 		if(buffer_) {
 			auto& ref = buffer_->enhance().to_type<eth::lwip::transmit_callback>();
@@ -271,6 +258,44 @@ namespace uptp {
 	{
 		buffer_->pbuf.len     = size;
 		buffer_->pbuf.tot_len = size;
+	}
+
+	//
+	// Timer Handle
+	//
+	Timer::Timer()
+	{}
+
+	Timer::Timer(ulib::function<void()> func)
+		: callback(std::move(func))
+	{}
+
+	void Timer::start(uint32 timeout_msecs)
+	{
+		eth::lwip::LwipThread::get().add_timeout_thread(timeout_msecs, &Timer::timer_func, this);
+	}
+
+	void Timer::reset(uint32 timeout_msecs)
+	{
+		eth::lwip::LwipThread::get().update_timeout_thread(timeout_msecs, &Timer::timer_func, this);
+	}
+
+	void Timer::stop()
+	{
+		eth::lwip::LwipThread::get().remove_timeout_thread(&Timer::timer_func, this);
+	}
+
+	void Timer::timer_func(void* arg)
+	{
+		Timer* tim = static_cast<Timer*>(arg);
+		if (tim->callback) {
+			tim->callback();
+		}
+	}
+
+	Timer::~Timer()
+	{
+		stop();
 	}
 
 }

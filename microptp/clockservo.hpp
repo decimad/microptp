@@ -19,7 +19,7 @@ namespace uptp {
 		void reset( int32 integrator );
 		void feed( uint32 dt, int32 offset );
 
-		util::function<void(int32)> output;
+		ulib::function<void(int32)> output;
 
 	private:
 		FIXED_RANGE(-10000000, 10000000, 32) integrator_state_;

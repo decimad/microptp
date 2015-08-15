@@ -40,7 +40,7 @@ namespace uptp {
 
 		~PacketHandle();
 
-		void set_transmit_callback(util::function<void(uint64, eth::lwip::custom_buffer_ptr)>);
+		void set_transmit_callback(ulib::function<void(uint64, eth::lwip::custom_buffer_ptr)>);
 
 	private:
 		eth::lwip::custom_buffer_ptr buffer_;
@@ -57,8 +57,8 @@ namespace uptp {
 
 		void send( uint32 ip, uint16 port, PacketHandle handle, uint32 id );
 
-		util::function<void(uint32 id, Time timestamp)> on_transmit_completed;
-		util::function<void(PacketHandle)> on_received;
+		ulib::function<void(uint32 id, Time timestamp)> on_transmit_completed;
+		ulib::function<void(PacketHandle)> on_received;
 
 		explicit operator bool() const;
 
@@ -78,7 +78,31 @@ namespace uptp {
 		uint16 udpport_;
 	};
 
-	using NetHandle = util::pool_ptr<UdpStruct>;
+	using NetHandle = ulib::pool_ptr<UdpStruct>;
+
+	class Timer {
+	public:
+		Timer(const Timer&) = delete;
+		void operator=(const Timer&) = delete;
+		
+		Timer();
+		Timer(ulib::function<void()> func);
+
+		void start(uint32 msecs);
+		void reset(uint32 msecs);
+
+		void stop();
+
+		ulib::function<void()> callback;
+		
+		~Timer();
+
+	private:
+		static void timer_func(void* arg);
+		
+	};
+
+	using TimerHandle = ulib::pool_ptr<Timer>;
 
 }
 

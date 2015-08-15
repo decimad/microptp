@@ -25,6 +25,8 @@ namespace uptp {
 
 		uint8 domainNumber;
 		enum8 timeSource;
+
+		TimerHandle watchdog;
 	};
 
 	int bmc_compare(const MasterDescriptor& a, const MasterDescriptor& b, const Config& cfg);
@@ -188,8 +190,8 @@ namespace uptp {
 
 		void announce_master(const msg::Header& header, const msg::Announce& announce);
 
-		util::function<void()> foreign_set_changed;
-		util::function<void()> best_master_changed;
+		ulib::function<void()> foreign_set_changed;
+		ulib::function<void()> best_master_changed;
 
 		size_t num_foreigns() const;
 		const MasterDescriptor* best_foreign() const;
@@ -206,6 +208,9 @@ namespace uptp {
 		uint8 best_master() const;
 
 		static constexpr size_t max_masters_ = 10;
+
+		//util::pool<MasterDescriptor, max_masters_> foreign_masters_;
+		//util::static_heap<util::pool_ptr<MasterDescriptor>, max_masters_, BmcComparator<max_masters_>> sorted_masters_;
 
 		inefficient_pool<MasterDescriptor, max_masters_> foreign_masters_;
 		inefficient_sorted_array<uint8, max_masters_, BmcComparator<max_masters_>> sorted_masters_;

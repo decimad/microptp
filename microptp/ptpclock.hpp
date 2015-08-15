@@ -118,7 +118,7 @@ namespace uptp {
 		void enable();
 		void disable();
 
-		void send_delay_req(util::function<void(const Time&)> completion_func);
+		void send_delay_req(ulib::function<void(const Time&)> completion_func);
 
 		void on_network_changed();
 		void on_general_message(PacketHandle packet);
@@ -149,7 +149,7 @@ namespace uptp {
 		PortIdentity port_identity_;
 		//util::static_string<32> user_description;
 
-		util::state_machine<
+		ulib::state_machine<
 			states::Initializing,
 			//states::Faulty,
 			states::Disabled,
