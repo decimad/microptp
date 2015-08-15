@@ -31,7 +31,7 @@ namespace uptp {
 	public:
 		void start();
 
-		void ip_addr_changed( ip_addr_t addr );
+		void network_changed( ip_address addr, std::array<uint8, 6>& mac_address );
 
 		// Port interface
 	public:
@@ -67,6 +67,5 @@ namespace uptp {
 		
 }
 
-#define UPTP_SLAVE_ONLY
 #endif
 #endif

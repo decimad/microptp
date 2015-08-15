@@ -1,3 +1,8 @@
+//          Copyright Michael Steinberg 2015
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
 #include <microptp/config.hpp>
 #include <microptp/ptpclock.hpp>
 #include <microptp/messages.hpp>
@@ -171,6 +176,7 @@ namespace uptp {
 		Slave::~Slave()
 		{
 			clock_.master_tracker().best_master_changed.reset();
+			servo_.output.reset();
 			clock_.event_port()->on_transmit_completed.reset();
 		}
 
@@ -193,9 +199,10 @@ namespace uptp {
 			} else if (header.is(MessageTypes::DelayResp)) {
 				msg::DelayResp delayresp;
 				msg::deserialize(packet_handle.get_data(), delayresp);
-//				if (delayresp.port_identity == clock_.master_tracker().best_foreign()->port_identity) {
+				if ( header.source_port_identity == clock_.master_tracker().best_foreign()->port_identity
+				  && delayresp.port_identity == clock_.get_identity() ) {
 					on_request_answered(delayresp.timestamp);
-//				}
+				}
 			}
 		}
 
@@ -229,6 +236,11 @@ namespace uptp {
 
 		void Slave::on_best_master_changed()
 		{
+			if(clock_.master_tracker().best_foreign()) {
+				clock_.to_state<Slave>();
+			} else {
+				clock_.to_state<Listening>();
+			}
 		}
 
 		void Slave::on_delay_req_timer()

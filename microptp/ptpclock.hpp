@@ -120,7 +120,7 @@ namespace uptp {
 
 		void send_delay_req(ulib::function<void(const Time&)> completion_func);
 
-		void on_network_changed();
+		void on_network_changed(ip_address ipaddr, const std::array<uint8, 6>& macaddr);
 		void on_general_message(PacketHandle packet);
 		void on_event_message(PacketHandle packet);
 
@@ -141,13 +141,10 @@ namespace uptp {
 
 		SystemPort& system_port_;
 		Config cfg_;
-		PortIdentity clock_identity_;
+		PortIdentity port_identity_;
 		MasterTracker master_tracker_;
 		
 		void init_net();
-
-		PortIdentity port_identity_;
-		//util::static_string<32> user_description;
 
 		ulib::state_machine<
 			states::Initializing,

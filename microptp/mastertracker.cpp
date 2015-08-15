@@ -85,7 +85,7 @@ namespace uptp {
 	//
 
 	MasterTracker::MasterTracker(const Config& config)
-		: sorted_masters_(foreign_masters_, config)
+		: sorted_masters_(config), config_(config)
 	{
 	}
 
@@ -95,50 +95,49 @@ namespace uptp {
 
 	void MasterTracker::announce_master(const msg::Header& header, const msg::Announce& announce)
 	{
-		size_t old_best = sorted_masters_.size() ? sorted_masters_.front() : -1;
-		auto index = foreign_masters_.find_if([&](const MasterDescriptor& desc) { return desc.port_identity == header.source_port_identity; });
-		if (index == size_t(-1)) {
-			index = foreign_masters_.emplace(header, announce);
-			if(index != size_t(-1)) {
-				sorted_masters_.insert(index);
-			}
+		auto* best = best_foreign();
+		
+		auto it = std::find_if(sorted_masters_.begin(), sorted_masters_.end(), [&](const auto& pm) { return pm->port_identity == header.source_port_identity;});
+		if (it != sorted_masters_.end()) {
+			(*it)->update(header, announce);
+			sorted_masters_.restore(it);
 		} else {
-//			foreign_masters_[index].update(header, announce);
-//			sorted_masters_.resort();
+			if (sorted_masters_.size() == sorted_masters_.capacity() && bmc_compare(MasterDescriptor(header, announce), *sorted_masters_.max_element(), config_)) {
+				sorted_masters_.pop_back();
+			}
+
+			if (sorted_masters_.size() != sorted_masters_.capacity()) {
+				sorted_masters_.emplace_binary(foreign_masters_.make(header, announce));
+			} 
 		}
-		if (sorted_masters_.front() != old_best && best_master_changed) {
+
+		if (sorted_masters_.min_element().get_payload() != best && best_master_changed)
+		{
 			best_master_changed();
 		}
 	}
 
-	uint8 MasterTracker::find_master(const PortIdentity& identity) {
-		return foreign_masters_.find_if([&](const MasterDescriptor& desc) { return desc.port_identity == identity; });
+	MasterTracker::sorted_iterator MasterTracker::find_master(const PortIdentity& identity) {
+		return std::find_if( sorted_masters_.begin(), sorted_masters_.end(), [&](const auto& pm) { return (*pm).port_identity == identity; });
 	}
 
-	uint8 MasterTracker::find_master(const MasterDescriptor& desc) {
-		return foreign_masters_.find_if([&](const MasterDescriptor& desc2) { return &desc2 == &desc; });
+	MasterTracker::sorted_iterator MasterTracker::find_master(const MasterDescriptor& desc) {
+		return std::find_if(sorted_masters_.begin(), sorted_masters_.end(), [&](const auto& pm) { return (*pm).port_identity == desc.port_identity; });
 	}
 
-	void MasterTracker::remove_master(const PortIdentity& identity) {
-		auto index = find_master(identity);
-		if (index != -1) {
-			remove_master(index);
+	void MasterTracker::erase(sorted_iterator it) {
+		auto* best = best_foreign();
+		sorted_masters_.erase(it);
+
+		if (best_foreign() != best && best_master_changed) {
+			best_master_changed();
 		}
 	}
 	
-	void MasterTracker::remove_master(uint8 index) {
-		size_t old_best = sorted_masters_.front();
-		sorted_masters_.remove_val(index);
-		foreign_masters_.remove(index);
-		if (sorted_masters_.front() != old_best && best_master_changed) {
-			best_master_changed();
-		}
-	}
-
 	const MasterDescriptor* uptp::MasterTracker::best_foreign() const
 	{
 		if(sorted_masters_.size()) {
-			return &foreign_masters_[sorted_masters_.front()];
+			return sorted_masters_.min_element().get_payload();
 		} else {
 			return nullptr;
 		}

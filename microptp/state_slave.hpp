@@ -1,14 +1,14 @@
-/*
- * state_slave.hpp
- *
- *  Created on: 10.07.2015
- *      Author: Michael
- */
+//          Copyright Michael Steinberg 2015
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
 
 #ifndef MICROPTP_STATE_SLAVE_HPP__
 #define MICROPTP_STATE_SLAVE_HPP__
 #include <microptp/state_base.hpp>
 #include <microptp/ptpdatatypes.hpp>
+#include <microptp/clockservo.hpp>
+#include <microlib/circular_buffer.hpp>
 
 namespace uptp {
 
@@ -107,9 +107,6 @@ namespace uptp {
 
 			ClockServo servo_;
 			PtpClock& clock_;
-
-			//PtpDelayState delay_state_;
-			//TimerHandleType delay_req_timer_;
 		};
 
 	}

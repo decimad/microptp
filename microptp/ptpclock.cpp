@@ -5,7 +5,7 @@
 namespace uptp {
 
 	PtpClock::PtpClock(SystemPort& system_port, const Config& cfg)
-		: master_tracker_(cfg), system_port_(system_port), cfg_(cfg), clock_identity_(cfg.mac_addr, 0)
+		: master_tracker_(cfg), system_port_(system_port), cfg_(cfg)
 	{
 		statemachine_.to_state<states::Initializing>(*this);
 	}
@@ -63,10 +63,12 @@ namespace uptp {
 
 	}
 
-	void PtpClock::on_network_changed() {
-		auto& sys = get_system_port();
-
+	void PtpClock::on_network_changed(ip_address ipaddr, const std::array<uint8, 6>& macaddr) {
+		port_identity_.clock.update(macaddr);
+		port_identity_.port = 1;
+		
 		PRINT("Network changed!\n");
+		auto& sys = get_system_port();
 
 		event_port_   = sys.make_udp(319);
 		general_port_ = sys.make_udp(320);
@@ -77,7 +79,6 @@ namespace uptp {
 			event_port_->on_received   = ulib::function<void(PacketHandle)>(this, &PtpClock::on_event_message);
 			general_port_->on_received = ulib::function<void(PacketHandle)>(this, &PtpClock::on_general_message);
 		}
-
 	}
 
 	NetHandle& PtpClock::event_port()
@@ -92,7 +93,7 @@ namespace uptp {
 
 	PortIdentity& PtpClock::get_identity()
 	{
-		return clock_identity_;
+		return port_identity_;
 	}
 
 }

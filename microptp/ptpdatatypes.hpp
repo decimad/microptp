@@ -64,14 +64,21 @@ namespace uptp {
 	bool operator!=(const ClockQuality&, const ClockQuality&);
 	
 	struct ClockIdentity {
-		ClockIdentity() {}
+		ClockIdentity()
+		{
+		}
 
 		ClockIdentity(const std::array<uint8, 6>& mac_addr)
 		{
-			std::copy(mac_addr.begin(), mac_addr.begin()+3, identity.begin());
+			update(mac_addr);
+		}
+
+		void update(const std::array<uint8, 6>& mac_addr)
+		{
+			std::copy(mac_addr.begin(), mac_addr.begin() + 3, identity.begin());
 			identity[3] = 0xFF;
 			identity[4] = 0xFE;
-			std::copy(mac_addr.begin()+3, mac_addr.end(), identity.begin()+5);
+			std::copy(mac_addr.begin() + 3, mac_addr.end(), identity.begin() + 5);
 		}
 
 		uint8& operator[](uint8 index)

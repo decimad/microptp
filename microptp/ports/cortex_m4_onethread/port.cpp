@@ -94,10 +94,12 @@ namespace uptp {
 		}
 	}
 
-	void SystemPort::ip_addr_changed( ip_addr_t addr )
+	void SystemPort::network_changed( ip_address ipaddr, std::array<unsigned char, 6>& macaddr )
 	{
-		ip_address_ = addr;
-		clock_.on_network_changed();
+		clock_.on_network_changed(ipaddr, macaddr);
+
+		//ip_address_ = addr;
+		//clock_.on_network_changed();
 	}
 
 	// Port interface

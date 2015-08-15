@@ -1,16 +1,20 @@
+//          Copyright Michael Steinberg 2015
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
 #ifndef MICROPTP_CLOCKSERVO_HPP__
 #define MICROPTP_CLOCKSERVO_HPP__
 
 #pragma once
-#include <microptp/uptp.hpp>
-#include <microptp/ptpdatatypes.hpp>
+#include <microptp/config.hpp>
 #include <microlib/functional.hpp>
-#include <microlib/circular_buffer.hpp>
-#include <microlib/statemachine.hpp>
 #include <fixed/fixed.hpp>
 
 namespace uptp {
 	
+	class SystemPort;
+
 	class ClockServo {
 	public:
 		ClockServo(SystemPort& clock);

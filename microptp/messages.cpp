@@ -228,13 +228,13 @@ namespace uptp {
 		void serialize(net_buffer buff, const DelayResp& host)
 		{
 			serialize<34>(buff, host.timestamp);
-			//serialize<44>(buff, host.timestamp);
+			serialize<44>(buff, host.port_identity);
 		}
 
 		void deserialize(net_const_buffer buff, DelayResp& host)
 		{
 			deserialize<34>(buff, host.timestamp);
-			//deserialize<44>(buff, host.port_identity);
+			deserialize<44>(buff, host.port_identity);
 		}
 
 	}

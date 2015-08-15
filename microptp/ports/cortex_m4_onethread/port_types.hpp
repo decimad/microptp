@@ -104,6 +104,7 @@ namespace uptp {
 
 	using TimerHandle = ulib::pool_ptr<Timer>;
 
+	using ip_address = ip_addr_t;
 }
 
 #endif
