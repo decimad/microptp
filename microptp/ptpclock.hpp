@@ -1,3 +1,8 @@
+//          Copyright Michael Steinberg 2015
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
 #ifndef MICROPTP_PTPCLOCK_HPP__
 #define MICROPTP_PTPCLOCK_HPP__
 
@@ -105,42 +110,48 @@ namespace uptp {
 	public:
 		PtpClock(SystemPort& env, const Config& cfg);
 
-		SystemPort& get_system_port();
-		Config& get_cfg();
-
-		MasterTracker& master_tracker();
-
-		template< typename T >
-		bool is() const {
-			return statemachine_.template is_state<T>();
-		}
-
+	public:
 		void enable();
 		void disable();
 
-		void send_delay_req(ulib::function<void(const Time&)> completion_func);
-
+	public:
+		// Invoked by systemport
 		void on_network_changed(ip_address ipaddr, const std::array<uint8, 6>& macaddr);
 		void on_general_message(PacketHandle packet);
 		void on_event_message(PacketHandle packet);
+
+	public:
+		SystemPort& get_system_port();
+		Config& get_config();
+		MasterTracker& master_tracker();
 
 		NetHandle& event_port();
 		NetHandle& general_port();
 
 		PortIdentity& get_identity();
 
+	public:
+		// State machine
 		template< typename State, typename... Args >
 		void to_state(Args&&... args)
 		{
 			statemachine_.template to_state<State>(*this, std::forward<Args>(args)...);
 		}
 
+		template< typename T >
+		bool is() const {
+			return statemachine_.template is_state<T>();
+		}
+
+	public:
+		void send_delay_req(ulib::function<void(const Time&)> completion_func);
+
 	private:
 		NetHandle event_port_;
 		NetHandle general_port_;
 
 		SystemPort& system_port_;
-		Config cfg_;
+		Config config_;
 		PortIdentity port_identity_;
 		MasterTracker master_tracker_;
 		

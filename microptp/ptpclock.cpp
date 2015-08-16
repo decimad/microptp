@@ -1,11 +1,16 @@
+//          Copyright Michael Steinberg 2015
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
 #include <microptp/config.hpp>
 #include <microptp/ptpclock.hpp>
 #include <microptp/ports/systemport.hpp>
 
 namespace uptp {
 
-	PtpClock::PtpClock(SystemPort& system_port, const Config& cfg)
-		: master_tracker_(cfg), system_port_(system_port), cfg_(cfg)
+	PtpClock::PtpClock(SystemPort& system_port, const Config& config)
+		: master_tracker_(config), system_port_(system_port), config_(config)
 	{
 		statemachine_.to_state<states::Initializing>(*this);
 	}
@@ -13,6 +18,11 @@ namespace uptp {
 	SystemPort& PtpClock::get_system_port()
 	{
 		return system_port_;
+	}
+
+	Config& PtpClock::get_config()
+	{
+		return config_;
 	}
 
 	MasterTracker& PtpClock::master_tracker()
@@ -37,11 +47,11 @@ namespace uptp {
 	void PtpClock::on_general_message(PacketHandle packet)
 	{
 		msg::Header header;
-		msg::deserialize(packet.get_data(), header);
+		msg::deserialize(packet->get_data(), header);
 		
 		if (header.is(MessageTypes::Announce)) {
 			msg::Announce announce;
-			msg::deserialize(packet.get_data(), announce);
+			msg::deserialize(packet->get_data(), announce);
 			master_tracker_.announce_master(header, announce);
 		} else {
 			auto* state = statemachine_.get_state_interface<states::PtpStateBase>();
@@ -54,7 +64,7 @@ namespace uptp {
 	void PtpClock::on_event_message(PacketHandle packet)
 	{
 		msg::Header header;
-		msg::deserialize(packet.get_data(), header);
+		msg::deserialize(packet->get_data(), header);
 
 		auto* state = statemachine_.get_state_interface<states::PtpStateBase>();
 		if (state) {
