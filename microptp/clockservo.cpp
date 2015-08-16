@@ -13,12 +13,9 @@ namespace uptp {
 	// ClockServo
 	//
 
-	ClockServo::ClockServo(SystemPort& system_port)
-		: system_port_(system_port)
+	ClockServo::ClockServo(PtpClock& clock)
+		: clock_(clock)
 	{
-		// (premultiply seconds_factor to save the multiplication every feed)...
-		kp_ = kp_.from(0.02);
-		kn_ = kn_.from(0.0005);
 		integrator_state_ = 0;
 	}
 	
@@ -43,8 +40,8 @@ namespace uptp {
 		// => [kn_] = [ppb / offset_nanos]
 		// => [kp_] = [ppb / offset_nanos / s]
 
-		integrator_state_ += seconds_factor * dt_nanos_type(dt_nanos) * off_nanos_type(offset_nanos) * kn_;
-		const auto proportional = off_nanos_type(offset_nanos) * kp_;
+		integrator_state_ += seconds_factor * dt_nanos_type(dt_nanos) * off_nanos_type(offset_nanos) * clock_.get_config().kn_;
+		const auto proportional = off_nanos_type(offset_nanos) * clock_.get_config().kp_;
 		const auto result       = proportional + integrator_state_;
 
 		if(output) {

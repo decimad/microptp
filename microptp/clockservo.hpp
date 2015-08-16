@@ -13,11 +13,11 @@
 
 namespace uptp {
 	
-	class SystemPort;
+	class PtpClock;
 
 	class ClockServo {
 	public:
-		ClockServo(SystemPort& clock);
+		ClockServo(PtpClock& clock);
 		~ClockServo();
 
 		void reset( int32 integrator );
@@ -27,10 +27,7 @@ namespace uptp {
 
 	private:
 		FIXED_RANGE(-10000000, 10000000, 32) integrator_state_;
-		FIXED_RANGE(0, 0.01, 32) kn_;
-		FIXED_RANGE(0, 0.1, 32) kp_;
-
-		SystemPort& system_port_;
+		PtpClock& clock_;
 	};
 	
 }
