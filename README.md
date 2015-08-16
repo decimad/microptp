@@ -7,7 +7,7 @@ c++ implementation of a non-conforming ptp clock (slave only for now)
 - feel free to donate a copy of the spec ;)
 
 memory footprint
-  - text: 40.6 kb including ethernet driver, lwip with dhcp and the stmlib ptp port.
+  - text: 40.6 kb including ethernet driver, lwip with dhcp and the stmlib ptp port. (O3, lto, arm gcc 4.9)
   - bss : 48 kb including 25kb lwip heap+buffers, 8kb stmlib rx buffers, 4kb net thread stack (can be tuned down...)
 
 
