@@ -6,6 +6,11 @@ c++ implementation of a non-conforming ptp clock (slave only for now)
 - see file microptp/ports/systemport.hpp for the system port api, see included port onethread for a sample implementation using stmlib on a stm32f407
 - feel free to donate a copy of the spec ;)
 
+memory footprint
+  - text: 40.6 kb including ethernet driver, lwip with dhcp and the stmlib ptp port.
+  - bss : 48 kb including 25kb lwip heap+buffers, 8kb stmlib rx buffers, 4kb net thread stack (can be tuned down...)
+
+
 relies on these libraries
 - microlib (https://github.com/decimad/microlib)
 - fixed point lib (https://github.com/decimad/fixed)
