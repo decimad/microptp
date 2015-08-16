@@ -23,6 +23,20 @@ namespace uptp {
 		PacketHandle(const PacketHandle&) = delete;
 		PacketHandle& operator=(const PacketHandle&) = delete;
 
+		~PacketHandle();
+
+	public:
+		// Handle Simulation
+		PacketHandle* operator->();
+		const PacketHandle* operator->() const;
+
+		PacketHandle& operator*();
+		const PacketHandle& operator*() const;
+
+		explicit operator bool() const;
+
+	public:
+		// [PacketRep]
 		void* get_data();
 		const void* get_data() const;
 
@@ -31,15 +45,12 @@ namespace uptp {
 
 		Time time() const;
 
+		// Used by System Port only
+	public:
 		void time_to_logical();
 		void time_to_physical();
 		PacketHandle(eth::lwip::custom_buffer_ptr buffer);
-		explicit operator bool() const;
-
 		pbuf* release_pbuf();
-
-		~PacketHandle();
-
 		void set_transmit_callback(ulib::function<void(uint64, eth::lwip::custom_buffer_ptr)>);
 
 	private:
@@ -55,14 +66,16 @@ namespace uptp {
 	public:
 		UdpStruct(SystemPort* sysport, uint16 port);
 
+	public:
+		// [NetRep]
 		void send( uint32 ip, uint16 port, PacketHandle handle, uint32 id );
 
 		ulib::function<void(uint32 id, Time timestamp)> on_transmit_completed;
 		ulib::function<void(PacketHandle)> on_received;
 
-		explicit operator bool() const;
-
 		static PacketHandle acquire_transmit_handle();
+
+		explicit operator bool() const;
 
 	private:
 		void transmit_completed_callback(uint64 time, eth::lwip::custom_buffer_ptr buffer);
@@ -88,15 +101,16 @@ namespace uptp {
 		Timer();
 		Timer(ulib::function<void()> func);
 
+		~Timer();
+
+	public:
+		// [TimerRep]
 		void start(uint32 msecs);
 		void reset(uint32 msecs);
-
 		void stop();
 
 		ulib::function<void()> callback;
 		
-		~Timer();
-
 	private:
 		static void timer_func(void* arg);
 		

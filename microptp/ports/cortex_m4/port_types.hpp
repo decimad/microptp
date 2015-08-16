@@ -23,6 +23,20 @@ namespace uptp {
 		PacketHandle(const PacketHandle&) = delete;
 		PacketHandle& operator=(const PacketHandle&) = delete;
 
+		~PacketHandle();
+
+	public:
+		// Handle interface simulation
+		PacketHandle* operator->();
+		const PacketHandle* operator->() const;
+
+		PacketHandle& operator*();
+		const PacketHandle& operator*() const;
+
+		explicit operator bool() const;
+
+	public:
+		// [PacketRep]
 		void* get_data();
 		const void* get_data() const;
 
@@ -31,15 +45,12 @@ namespace uptp {
 
 		Time time() const;
 
+	public:
 		void time_to_logical();
 		void time_to_physical();
 		PacketHandle(eth::lwip::custom_buffer_ptr buffer);
-		explicit operator bool() const;
-
+	
 		pbuf* release_pbuf();
-
-		~PacketHandle();
-
 		void set_transmit_callback(util::function<void(uint64, eth::lwip::custom_buffer_ptr)>);
 
 	private:

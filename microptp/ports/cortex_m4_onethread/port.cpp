@@ -206,6 +206,26 @@ namespace uptp {
 		return *this;
 	}
 
+	PacketHandle* PacketHandle::operator->()
+	{
+		return this;
+	}
+
+	const PacketHandle* PacketHandle::operator->() const
+	{
+		return this;
+	}
+
+	PacketHandle& PacketHandle::operator*() {
+		return *this;
+	}
+		
+		
+	const PacketHandle& PacketHandle::operator*() const
+	{
+		return *this;
+	}
+
 	void PacketHandle::time_to_logical()
 	{
 		if(buffer_->is_enhanced() && buffer_->enhanced()->is<uint64>()) {
