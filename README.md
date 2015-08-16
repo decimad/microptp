@@ -5,6 +5,7 @@ c++ implementation of a non-conforming ptp clock (slave only for now)
 - no master timeout removal (since I don't know the specs for this to conform)
 - see file microptp/ports/systemport.hpp for the system port api, see included port onethread for a sample implementation using stmlib on a stm32f407
 - feel free to donate a copy of the spec ;)
+- no runtime floating point (constexpr only through fixed point lib)
 
 memory footprint
   - text: 40.6 kb including ethernet driver, lwip with dhcp and the stmlib ptp port. (O3, lto, arm gcc 4.9)
