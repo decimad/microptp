@@ -263,22 +263,22 @@ namespace uptp {
 		void Slave::on_request_answered(const Time& dreq_receive)
 		{
 			if(dreq_state_ == slave_detail::DreqState::DreqSent) {
-				if(states_.is_state<slave_detail::pi_operational>()) {
-					states_.as_state<slave_detail::pi_operational>().on_delay(*this, dreq_receive, dreq_send_);
-				} else if(states_.is_state<slave_detail::estimating_drift>()) {
-					states_.as_state<slave_detail::estimating_drift>().on_delay(*this, dreq_receive, dreq_send_);
-				}
+				states_.dispatch_self <
+					ulib::case_<slave_detail::pi_operational, METHOD(&slave_detail::pi_operational::on_delay)>,
+					ulib::case_<slave_detail::estimating_drift, METHOD(&slave_detail::estimating_drift::on_delay)>
+				>(*this, dreq_receive, dreq_send_);
+				
 				dreq_state_ = slave_detail::DreqState::Initial;
 			}
 		}
 
 		void Slave::on_sync(uint16 serial, const Time& receive_time, const Time& send_time)
 		{
-			if(states_.is_state<slave_detail::pi_operational>()) {
-				states_.as_state<slave_detail::pi_operational>().on_sync(*this, send_time, receive_time);
-			} else if(states_.is_state<slave_detail::estimating_drift>()) {
-				states_.as_state<slave_detail::estimating_drift>().on_sync(*this, send_time, receive_time);
-			}
+			states_.dispatch_self <
+				ulib::case_<slave_detail::pi_operational,   METHOD(&slave_detail::pi_operational::on_sync)>,
+				ulib::case_<slave_detail::estimating_drift, METHOD(&slave_detail::estimating_drift::on_sync)>
+			>(*this, send_time, receive_time);
+	
 			sync_state_ = slave_detail::SyncState::Initial;
 		}
 
@@ -293,11 +293,11 @@ namespace uptp {
 		void Slave::on_sync_followup(uint16 serial, const Time& send_time)
 		{
 			if(sync_state_ == slave_detail::SyncState::SyncTwoStepReceived && serial == sync_serial_) {
-				if(states_.is_state<slave_detail::pi_operational>()) {
-					states_.as_state<slave_detail::pi_operational>().on_sync(*this, send_time, sync_receive_);
-				} else if(states_.is_state<slave_detail::estimating_drift>()) {
-					states_.as_state<slave_detail::estimating_drift>().on_sync(*this, send_time, sync_receive_);
-				}
+				states_.dispatch_self <
+					ulib::case_<slave_detail::pi_operational, METHOD(&slave_detail::pi_operational::on_sync)>,
+					ulib::case_<slave_detail::estimating_drift, METHOD(&slave_detail::estimating_drift::on_sync)>
+				>(*this, send_time, sync_receive_);
+
 				sync_state_ = slave_detail::SyncState::Initial;
 			} else {
 				sync_state_ = slave_detail::SyncState::Initial;
