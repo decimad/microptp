@@ -9,6 +9,7 @@
 #include <microptp/ptpdatatypes.hpp>
 #include <microptp/clockservo.hpp>
 #include <microlib/circular_buffer.hpp>
+#include <microlib/sorted_static_vector.hpp>
 
 namespace uptp {
 
@@ -20,6 +21,45 @@ namespace uptp {
 
 		namespace slave_detail {
 
+			template< typename T, size_t Size, size_t Width >
+			struct median_filter {
+			public:
+				median_filter()
+					: init_(true)
+				{}
+
+				void feed(T value) {
+					if (init_) {
+						for (unsigned int i = 0; i < Size; ++i) {
+							store_.add(value);
+						}
+						init_ = false;
+					} else {
+						store_.add(value);
+					}
+				}
+
+				T get() const
+				{
+					std::array<T, Size> temp;
+					std::copy(store_.store().begin(), store_.store().end(), temp.begin());
+					ulib::insertion_sort::insertion_sort_binary(temp.begin(), temp.end());
+
+					size_t start = Size / 2 - Width / 2;
+					size_t end   = start + Width;
+					T sum = 0;
+					for (size_t i = start; i != end; ++i) {
+						sum += temp[i];
+					}
+					return sum / T(Width);
+				}
+
+			private:
+				bool init_;
+				ulib::circular_buffer<T, Size> store_;
+				//ulib::sorted_static_vector<T, Size> store_;
+			};
+			
 			struct estimating_drift {
 				// we're estimating the drift before setting the time and starting the PI servo for reducing the initial shock
 				// PTP-Delay-Calculation introduces an error term linear in drift!
@@ -48,6 +88,9 @@ namespace uptp {
 				Time sync_master_;
 				Time sync_slave_;
 				Time last_time_;
+
+//				median_filter<int32, 7, 3> one_way_delay_filter_;
+//				median_filter<int32, 7, 3> uncorrected_offset_filter_;
 
 				ulib::circular_averaging_buffer<int32, 4> one_way_delay_buffer_;		// if the drift is bad, delay can actually be negative!
 				ulib::circular_averaging_buffer<int32, 4> uncorrected_offset_buffer_;

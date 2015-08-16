@@ -112,6 +112,8 @@ namespace uptp {
 			{
 				one_way_delay_buffer_.set(delay_nanos);
 				uncorrected_offset_buffer_.set(0);
+
+				//one_way_delay_filter_.feed(delay_nanos);
 			}
 
 			void pi_operational::on_sync(Slave& slave, Time master_time, Time slave_time)
@@ -125,6 +127,7 @@ namespace uptp {
 				}
 
 				if(offset.secs_ == 0) {
+					//uncorrected_offset_filter_.feed(offset.nanos_);
 					uncorrected_offset_buffer_.add(offset.nanos_);
 				}
 			}
@@ -144,11 +147,13 @@ namespace uptp {
 
 
 				if(one_way_delay.secs_ == 0) {
+					//one_way_delay_filter_.feed(one_way_delay.nanos_);
 					one_way_delay_buffer_.add(one_way_delay.nanos_);
 				}
 
 				if(last_time_.secs_ != 0) {
 					int32 offset = uncorrected_offset_buffer_.average() + one_way_delay_buffer_.average();
+					//int32 offset = uncorrected_offset_filter_.get() + one_way_delay_filter_.get();
 					uint32 dt    = static_cast<uint32>((slave_time - last_time_).to_nanos());
 					slave.servo_.feed(dt, offset);
 				}
@@ -160,7 +165,7 @@ namespace uptp {
 
 		Slave::Slave(PtpClock& clock)
 			: clock_(clock),
-			  servo_(clock.get_system_port()),
+			  servo_(clock),
 			  delay_req_id_(4434),
 			  sync_serial_(0),
 			  sync_state_(slave_detail::SyncState::Initial),
@@ -184,21 +189,21 @@ namespace uptp {
 		{
 			if (header.is(MessageTypes::Synch)) {
 				msg::Sync sync;
-				msg::deserialize(packet_handle.get_data(), sync);
+				msg::deserialize(packet_handle->get_data(), sync);
 
 				if(header.flag_field0 & uint8(msg::Header::Field0Flags::TwoStep)) {
-					on_sync(header.sequence_id, packet_handle.time());
+					on_sync(header.sequence_id, packet_handle->time());
 				} else {
-					on_sync(header.sequence_id, packet_handle.time(), sync.origin_timestamp);
+					on_sync(header.sequence_id, packet_handle->time(), sync.origin_timestamp);
 				}
 				send_delay_request();	// no timers yet :(
 			} else if( header.is(MessageTypes::FollowUp)) {
 				msg::FollowUp follow_up;
-				msg::deserialize(packet_handle.get_data(), follow_up);
+				msg::deserialize(packet_handle->get_data(), follow_up);
 				on_sync_followup(header.sequence_id, follow_up.precise_origin_timestamp);
 			} else if (header.is(MessageTypes::DelayResp)) {
 				msg::DelayResp delayresp;
-				msg::deserialize(packet_handle.get_data(), delayresp);
+				msg::deserialize(packet_handle->get_data(), delayresp);
 				if ( header.source_port_identity == clock_.master_tracker().best_foreign()->port_identity
 				  && delayresp.port_identity == clock_.get_identity() ) {
 					on_request_answered(delayresp.timestamp);
@@ -226,10 +231,10 @@ namespace uptp {
 
 			dreq.timestamp = Time(0ull);
 
-			msg::serialize(buffer_handle.get_data(), header);
-			msg::serialize(buffer_handle.get_data(), dreq);
+			msg::serialize(buffer_handle->get_data(), header);
+			msg::serialize(buffer_handle->get_data(), dreq);
 
-			buffer_handle.set_size(44);
+			buffer_handle->set_size(44);
 
 			port->send((224 << 0) | (0<<8) | (1<<16) | (129 << 24), 319, std::move(buffer_handle), 0xFFFF0000 | delay_req_id_);
 		}
