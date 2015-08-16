@@ -181,12 +181,12 @@ namespace uptp {
 	//
 	bool operator<(const ClockIdentity& lhs, const ClockIdentity& rhs)
 	{
-		return memcmp(&lhs.identity, &lhs.identity + 8, 8) == -1;
+		return memcmp(&lhs.identity, &rhs.identity, 8) == -1;
 	}
 
 	bool operator==(const ClockIdentity& lhs, const ClockIdentity& rhs)
 	{
-		memcmp(&lhs.identity, &lhs.identity + 8, 8) == 0;
+		return memcmp(&lhs.identity, &rhs.identity, 8) == 0;
 	}
 
 	bool operator>(const ClockIdentity& lhs, const ClockIdentity& rhs)
@@ -196,7 +196,7 @@ namespace uptp {
 
 	bool operator<=(const ClockIdentity& lhs, const ClockIdentity& rhs)
 	{
-		int ret = memcmp(&lhs.identity, &lhs.identity + 8, 8);
+		int ret = memcmp(&lhs.identity, &rhs.identity, 8);
 		return (ret == -1) || (ret == 0);
 	}
 

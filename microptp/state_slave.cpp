@@ -145,7 +145,6 @@ namespace uptp {
 					TRACE("PI Operational: Bad One-Way Delay: %d\n", one_way_delay.nanos_);
 				}
 
-
 				if(one_way_delay.secs_ == 0) {
 					//one_way_delay_filter_.feed(one_way_delay.nanos_);
 					one_way_delay_buffer_.add(one_way_delay.nanos_);
@@ -204,8 +203,13 @@ namespace uptp {
 			} else if (header.is(MessageTypes::DelayResp)) {
 				msg::DelayResp delayresp;
 				msg::deserialize(packet_handle->get_data(), delayresp);
-				if ( header.source_port_identity == clock_.master_tracker().best_foreign()->port_identity
-				  && delayresp.port_identity == clock_.get_identity() ) {
+				auto& source_identity = header.source_port_identity;
+				auto& best_identity   = clock_.master_tracker().best_foreign()->port_identity;
+				auto& dresp_identity  = delayresp.port_identity;
+				auto& this_identity   = clock_.get_identity();
+
+				if ( source_identity == best_identity && dresp_identity == this_identity )
+				{
 					on_request_answered(delayresp.timestamp);
 				}
 			}
@@ -278,7 +282,7 @@ namespace uptp {
 				ulib::case_<slave_detail::pi_operational,   METHOD(&slave_detail::pi_operational::on_sync)>,
 				ulib::case_<slave_detail::estimating_drift, METHOD(&slave_detail::estimating_drift::on_sync)>
 			>(*this, send_time, receive_time);
-	
+
 			sync_state_ = slave_detail::SyncState::Initial;
 		}
 
