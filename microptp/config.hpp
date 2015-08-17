@@ -32,8 +32,8 @@ namespace uptp {
 		static const bool any_domain = false;
 		static const uint8 preferred_domain = 0;
 
-		static constexpr auto kn_ = FIXED_RANGE(0, 0.01, 32)::from(0.004);
-		static constexpr auto kp_ = FIXED_RANGE(0, 0.1, 32)::from(0.01);
+		static constexpr auto kp_ = FIXED_RANGE(0, 0.1, 32)::from(0.005);
+		static constexpr auto kn_ = FIXED_RANGE(0, 0.01, 32)::from(0.0005);
 	};
 
 }

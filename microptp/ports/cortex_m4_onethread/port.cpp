@@ -19,7 +19,7 @@ namespace uptp {
 	// UdpStruct
 	//
 	UdpStruct::UdpStruct(SystemPort* sysport, uint16 port)
-		: sysport_(sysport), udpport_(port), pcb_(nullptr)
+		: pcb_(nullptr), sysport_(sysport), udpport_(port)
 	{
 		pcb_ = udp_new();
 		if (pcb_) {
@@ -34,6 +34,10 @@ namespace uptp {
 
 	void UdpStruct::on_recv( void * arg, struct udp_pcb * upcb, struct pbuf * p, const ip_addr_t * addr, u16_t port)
 	{
+		(void) upcb;
+		(void) port;
+		(void) addr;
+
 		UdpStruct& udp_struct = *reinterpret_cast<UdpStruct*>(arg);
 		PacketHandle handle(eth::lwip::ptr_from_pbuf(p));
 
@@ -52,6 +56,7 @@ namespace uptp {
 
 	void UdpStruct::transmit_completed_callback(uint64 time, eth::lwip::custom_buffer_ptr buffer)
 	{
+		(void) buffer;
 		if (on_transmit_completed) {
 			on_transmit_completed(transmit_id, Time(time));
 		}
@@ -124,7 +129,7 @@ namespace uptp {
 
 	void SystemPort::join_multicast(uint32 multicast_addr)
 	{
-		auto result = igmp_joingroup( &ip_address_, (ip_addr_t*)&multicast_addr );
+		igmp_joingroup( &ip_address_, (ip_addr_t*)&multicast_addr );
 	}
 
 	void SystemPort::leave_multicast()
@@ -139,7 +144,6 @@ namespace uptp {
 
 	void SystemPort::set_time(Time absolute)
 	{
-
 	}
 
 	void SystemPort::adjust_time(Time delta)

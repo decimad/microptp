@@ -89,10 +89,10 @@ namespace uptp {
 				Time sync_slave_;
 				Time last_time_;
 
-//				median_filter<int32, 7, 3> one_way_delay_filter_;
+				median_filter<int32, 7, 3> one_way_delay_filter_;
 //				median_filter<int32, 7, 3> uncorrected_offset_filter_;
 
-				ulib::circular_averaging_buffer<int32, 4> one_way_delay_buffer_;		// if the drift is bad, delay can actually be negative!
+//				ulib::circular_averaging_buffer<int32, 4> one_way_delay_buffer_;		// if the drift is bad, delay can actually be negative!
 				ulib::circular_averaging_buffer<int32, 4> uncorrected_offset_buffer_;
 			};
 
@@ -140,12 +140,12 @@ namespace uptp {
 			ulib::state_machine<slave_detail::estimating_drift, slave_detail::pi_operational> states_;
 
 			Time sync_receive_;	/* sync receive time from slave */
-			slave_detail::SyncState sync_state_;
-			uint16 sync_serial_;
-
 			Time dreq_send_;	/* delay request time from slave */
 			Time dreq_receive_;	/* delay reques answer from master */
+
+			uint16 sync_serial_;
 			uint16 delay_req_id_;
+			slave_detail::SyncState sync_state_;
 			slave_detail::DreqState dreq_state_;
 
 			ClockServo servo_;

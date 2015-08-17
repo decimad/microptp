@@ -77,10 +77,9 @@ namespace uptp {
 	
 		uint8 best_master() const;
 
-		const Config& config_;
-
 		ulib::pool<MasterDescriptor, max_masters_> foreign_masters_;
 		sorted_storage_type sorted_masters_;
+		const Config& config_;
 	};
 
 }

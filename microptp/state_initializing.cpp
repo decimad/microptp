@@ -21,6 +21,8 @@ namespace uptp {
 
 		void Initializing::on_message(const msg::Header& header, PacketHandle packet_handle)
 		{
+			(void) header;
+			(void) packet_handle;
 		}
 
 	}

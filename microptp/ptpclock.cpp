@@ -10,7 +10,7 @@
 namespace uptp {
 
 	PtpClock::PtpClock(SystemPort& system_port, const Config& config)
-		: master_tracker_(config), system_port_(system_port), config_(config)
+		: system_port_(system_port), config_(config), master_tracker_(config)
 	{
 		statemachine_.to_state<states::Initializing>(*this);
 	}
@@ -74,6 +74,8 @@ namespace uptp {
 	}
 
 	void PtpClock::on_network_changed(ip_address ipaddr, const std::array<uint8, 6>& macaddr) {
+		(void) ipaddr;
+
 		port_identity_.clock.update(macaddr);
 		port_identity_.port = 1;
 		

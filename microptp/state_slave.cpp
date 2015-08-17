@@ -27,6 +27,8 @@ namespace uptp {
 
 			void estimating_drift::on_sync(Slave& state, Time master_time, Time slave_time)
 			{
+				(void) state;
+
 				if(num_syncs_received_ == 0) {
 					first_sync_master_  = master_time;
 					first_sync_slave_ = slave_time;
@@ -44,9 +46,10 @@ namespace uptp {
 
 			void estimating_drift::on_delay(Slave& slave, Time master_time, Time slave_time)
 			{
+				(void) slave;
+
 				using namespace fix;
 				using large_nanos_type = FIXED_RANGE_I(0, 16000000000ull);
-				using small_nanos_type = FIXED_RANGE_I(0,2000000000u);
 				using drift_type = FIXED_RANGE(0.99, 1.01, 32);
 
 				// We're assuming that 8*one_way_delay doesn't reach a second!
@@ -87,11 +90,8 @@ namespace uptp {
 						}
 
 						// Fixme: use the mean offset + 1/2 * t * drift for a better estimate!
-						int64 offset_mean = uncorrected_offset_buffer_.average();
-						Time mean_uncorrected_offset = Time(offset_mean/1000000000, offset_mean%1000000000) + first_sync_master_ - first_sync_slave_;
-
-						const int64 corrected_half = fix::virtual_shift<-1>(drift_minus_one * nom_nanos).to<int64>();
-						Time offset = mean_uncorrected_offset + Time(0, mean_one_way_delay) /*+ Time(corrected_half/1000000000, corrected_half%1000000000)*/;
+						Time mean_uncorrected_offset = (sync_master_-sync_slave_);
+						Time offset = mean_uncorrected_offset + Time(0, mean_one_way_delay);
 						TRACE("Offsetting clock by %d secs %d nanos.\n", static_cast<int32>(offset.secs_), offset.nanos_);
 
 						auto& port = slave.clock_.get_system_port();
@@ -110,14 +110,15 @@ namespace uptp {
 			pi_operational::pi_operational(int32 delay_nanos)
 				: last_time_(0,0)
 			{
-				one_way_delay_buffer_.set(delay_nanos);
+				//one_way_delay_buffer_.set(delay_nanos);
 				uncorrected_offset_buffer_.set(0);
-
-				//one_way_delay_filter_.feed(delay_nanos);
+				one_way_delay_filter_.feed(delay_nanos);
 			}
 
 			void pi_operational::on_sync(Slave& slave, Time master_time, Time slave_time)
 			{
+				(void) slave;
+
 				sync_master_ = master_time;
 				sync_slave_  = slave_time;
 				Time offset  = master_time - slave_time;
@@ -146,12 +147,12 @@ namespace uptp {
 				}
 
 				if(one_way_delay.secs_ == 0) {
-					//one_way_delay_filter_.feed(one_way_delay.nanos_);
-					one_way_delay_buffer_.add(one_way_delay.nanos_);
+					one_way_delay_filter_.feed(one_way_delay.nanos_);
+					//one_way_delay_buffer_.add(one_way_delay.nanos_);
 				}
 
 				if(last_time_.secs_ != 0) {
-					int32 offset = uncorrected_offset_buffer_.average() + one_way_delay_buffer_.average();
+					int32 offset = uncorrected_offset_buffer_.average() + one_way_delay_filter_.get();
 					//int32 offset = uncorrected_offset_filter_.get() + one_way_delay_filter_.get();
 					uint32 dt    = static_cast<uint32>((slave_time - last_time_).to_nanos());
 					slave.servo_.feed(dt, offset);
@@ -163,12 +164,13 @@ namespace uptp {
 		}
 
 		Slave::Slave(PtpClock& clock)
-			: clock_(clock),
-			  servo_(clock),
-			  delay_req_id_(4434),
+			:
 			  sync_serial_(0),
+			  delay_req_id_(4434),
 			  sync_state_(slave_detail::SyncState::Initial),
-			  dreq_state_(slave_detail::DreqState::Initial)
+			  dreq_state_(slave_detail::DreqState::Initial),
+			  servo_(clock),
+			  clock_(clock)
 		{
 			clock_.master_tracker().best_master_changed = ulib::function<void()>(this, &Slave::on_best_master_changed);
 			servo_.output = ulib::function<void(int32)>(&clock.get_system_port(), &SystemPort::discipline);
@@ -225,6 +227,7 @@ namespace uptp {
 			header.source_port_identity = clock_.get_identity();
 			header.log_message_interval = 0x7F;
 			header.control_field = 1;
+			header.flag_field0 = header.flag_field1 = 0;
 			header.correction_field = 0;
 			header.domain_number = 0;
 			header.message_length = 44;
@@ -259,6 +262,8 @@ namespace uptp {
 
 		void Slave::on_delay_request_transmitted(uint32 id, Time when)
 		{
+			(void) id;
+
 			dreq_send_ = when;
 			dreq_state_ = slave_detail::DreqState::DreqSent;
 			++delay_req_id_;
@@ -278,6 +283,8 @@ namespace uptp {
 
 		void Slave::on_sync(uint16 serial, const Time& receive_time, const Time& send_time)
 		{
+			(void) serial;
+
 			states_.dispatch_self <
 				ulib::case_<slave_detail::pi_operational,   METHOD(&slave_detail::pi_operational::on_sync)>,
 				ulib::case_<slave_detail::estimating_drift, METHOD(&slave_detail::estimating_drift::on_sync)>

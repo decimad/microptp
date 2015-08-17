@@ -128,6 +128,8 @@ namespace uptp {
 
 			static void write(void* buffer, const HostType& host, util::size_t_type<Size>)
 			{
+				(void) buffer;
+				(void) host;
 			}
 
 			static void serialize(void* buffer, const HostType& host)
@@ -145,6 +147,8 @@ namespace uptp {
 
 			static void read(const void* buffer, HostType& host, util::size_t_type<Size>)
 			{
+				(void) buffer;
+				(void) host;
 			}
 
 			static void deserialize(const void* buffer, HostType& host)

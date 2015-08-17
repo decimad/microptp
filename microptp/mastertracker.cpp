@@ -36,28 +36,25 @@ namespace uptp {
 	{
 		int result;
 
-		if (result = compare(a.grandmaster_clock, b.grandmaster_clock)) {
+		if ((result = compare(a.grandmaster_clock, b.grandmaster_clock))) {
 			int grandmaster_compare_result = result;
 
 			// OPTIONAL domain comparison / any domain 
 			if ( cfg.any_domain ) {
 				// part 1: preferred domain wins
-				const uint8 domainNumber = 0;
-				if (result = match_exclusive(a.domainNumber, b.domainNumber, cfg.preferred_domain)) return result;
-				if (result = compare(a.domainNumber, b.domainNumber)) return result;
+				if ((result = match_exclusive(a.domainNumber, b.domainNumber, cfg.preferred_domain))) return result;
+				if ((result = compare(a.domainNumber, b.domainNumber))) return result;
 			}
 
-			if (result = compare(a.grandmasterPriority1, b.grandmasterPriority1)) return result;
-			if (result = compare(a.grandmaster_clock_quality, b.grandmaster_clock_quality)) return result;
-			if (result = compare(a.grandmasterPriority2, b.grandmasterPriority2)) return result;
+			if ((result = compare(a.grandmasterPriority1, b.grandmasterPriority1))) return result;
+			if ((result = compare(a.grandmaster_clock_quality, b.grandmaster_clock_quality))) return result;
+			if ((result = compare(a.grandmasterPriority2, b.grandmasterPriority2))) return result;
 			return grandmaster_compare_result;
 		} else {
 			if (a.stepsRemoved + 1 < b.stepsRemoved) return -1;
 			if (a.stepsRemoved > b.stepsRemoved + 1) return 1;
 			
-			if (result = compare(a.port_identity, b.port_identity)) return result;
-			
-			return 0;
+			return compare(a.port_identity, b.port_identity);
 		}
 	}
 		
